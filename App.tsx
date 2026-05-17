@@ -1536,7 +1536,7 @@ const App: React.FC = () => {
                                 easterEggCount: 0,
                                 easterEggTypes: [],
                                 ttsModel: 'gemini-2.5-pro-preview-tts',
-                                ttsVoice: 'Atlas',  // Calm, warm voice suitable for psychology content
+                                ttsVoice: 'kore',  // Warm, calm female voice — compatible with 2.5 pro
                                 ttsPreset: 'Ilmu Mental'
                             }));
                         } else {
