@@ -1533,9 +1533,9 @@ const App: React.FC = () => {
                                 narratorName: 'Ilmu Mental',
                                 stylePreset: 'Ilmu Mental',
                                 styleSuffix: ILMU_MENTAL_STYLE,
-                                easterEggCount: 1,
-                                easterEggTypes: ['psychological theory', 'pop psychology'],
-                                ttsModel: 'gemini-3.1-flash-tts-preview',
+                                easterEggCount: 0,
+                                easterEggTypes: [],
+                                ttsModel: 'gemini-2.5-pro-preview-tts',
                                 ttsVoice: 'Atlas',  // Calm, warm voice suitable for psychology content
                                 ttsPreset: 'Ilmu Mental'
                             }));
