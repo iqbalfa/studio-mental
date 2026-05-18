@@ -1536,7 +1536,7 @@ const App: React.FC = () => {
                                 easterEggCount: 0,
                                 easterEggTypes: [],
                                 ttsModel: 'gemini-2.5-pro-preview-tts',
-                                ttsVoice: 'puck',  // Male voice — bisa diganti via dropdown Pilih Suara
+                                ttsVoice: 'Puck',  // Male voice — bisa diganti via dropdown Pilih Suara
                                 ttsPreset: 'Ilmu Mental'
                             }));
                         } else {
