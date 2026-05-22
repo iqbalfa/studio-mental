@@ -34,11 +34,13 @@ interface StoryTableProps {
   onDeleteScene: (sceneId: string) => void;
   onUpdateSplitText: (sceneId: string, frameId: string, newSplitText: string[]) => void;
   onUpdateSceneType: (sceneId: string, frameId: string, newSceneType: SceneType) => void;
+  onUpdateSceneMode: (sceneId: string, frameId: string, newSceneMode: SceneMode) => void;
   onGeneratePrompts: (sceneId: string) => void;
   onGenerateAllImages?: () => void;
   isGeneratingAll?: boolean;
   generateAllProgress?: string;
   onCancelGenerateAll?: () => void;
+  onSplitScenes: () => void;
   language: 'id' | 'en';
 }
 
@@ -50,16 +52,16 @@ const TRANSLATIONS = {
     apply: "Terapkan",
     noStoryboard: "Belum ada storyboard. Masukkan paragraf target dan klik 'Buat Storyboard' atau tambah manual.",
     addManual: "+ Tambah Baris Manual",
-    col1: "1. Text dan Format",
-    col2: "2. Pembagian Kata",
-    col3: "3. Text-to-Image Prompt",
-    col4: "4. REF",
-    col5: "5. Visual Result",
+    col1: "1. Teks & Pembagian",
+    col3: "2. Text-to-Image Prompt",
+    col4: "3. REF",
+    col5: "4. Visual Result",
     save: "Simpan",
     editPrompt: "Instruksi revisi (Enter)",
     refine: "Refine",
     generating: "Membuat...",
-    generatePrompts: "Generate Prompts",
+    generatePrompts: "Generate T2I",
+    splitScenes: "Bagi Scene",
     generateAll: "Generate All Images (10 RPM)",
     stopGenerateAll: "Stop",
     readyToGenerate: "Ready to Generate",
@@ -83,16 +85,16 @@ const TRANSLATIONS = {
     apply: "Apply",
     noStoryboard: "No storyboard yet. Enter target paragraph and click 'Generate Storyboard' or add manually.",
     addManual: "+ Add Row Manually",
-    col1: "1. Text and Format",
-    col2: "2. Text Breakdown",
-    col3: "3. Text-to-Image Prompt",
-    col4: "4. REF",
-    col5: "5. Visual Result",
+    col1: "1. Text & Breakdown",
+    col3: "2. Text-to-Image Prompt",
+    col4: "3. REF",
+    col5: "4. Visual Result",
     save: "Save",
     editPrompt: "Revision instruction (Enter)",
     refine: "Refine",
     generating: "Generating...",
-    generatePrompts: "Generate Prompts",
+    generatePrompts: "Generate T2I",
+    splitScenes: "Split Scenes",
     generateAll: "Generate All Images (10 RPM)",
     stopGenerateAll: "Stop",
     readyToGenerate: "Ready to Generate",
@@ -177,11 +179,13 @@ const StoryTable: React.FC<StoryTableProps> = ({
   onDeleteScene,
   onUpdateSplitText,
   onUpdateSceneType,
+  onUpdateSceneMode,
   onGeneratePrompts,
   onGenerateAllImages,
   isGeneratingAll,
   generateAllProgress,
   onCancelGenerateAll,
+  onSplitScenes,
   language = 'id'
 }) => {
   const t = TRANSLATIONS[language] || TRANSLATIONS['id'];
@@ -320,7 +324,28 @@ const StoryTable: React.FC<StoryTableProps> = ({
         ) : (
         <div className="flex flex-col gap-4">
             {onGenerateAllImages && (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-3">
+                    <button
+                        onClick={() => onGeneratePrompts()}
+                        disabled={scenes.some(s => s.isGeneratingPrompts)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors border ${
+                            scenes.some(s => s.isGeneratingPrompts)
+                            ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-wait'
+                            : 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border-purple-500/50'
+                        }`}
+                    >
+                        {scenes.some(s => s.isGeneratingPrompts) ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                {t.generating}
+                            </>
+                        ) : (
+                            <>
+                                <Zap className="w-4 h-4" />
+                                {t.generatePrompts}
+                            </>
+                        )}
+                    </button>
                     {isGeneratingAll ? (
                         <button
                             onClick={onCancelGenerateAll}
@@ -344,11 +369,10 @@ const StoryTable: React.FC<StoryTableProps> = ({
             <table className="w-full text-left text-sm border-collapse table-fixed">
             <thead className="bg-slate-800 text-slate-200 uppercase tracking-wider font-semibold text-xs">
             <tr>
-                <th className="p-4 w-[15%] border-r border-slate-700">{t.col1}</th>
-                <th className="p-4 w-[15%] border-r border-slate-700">{t.col2}</th>
+                <th className="p-4 w-[25%] border-r border-slate-700">{t.col1}</th>
                 <th className="p-4 w-[25%] border-r border-slate-700">{t.col3}</th>
                 <th className="p-4 w-[10%] text-center border-r border-slate-700">{t.col4}</th>
-                <th className="p-4 w-[35%] text-center">{t.col5}</th>
+                <th className="p-4 w-[40%] text-center">{t.col5}</th>
             </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
@@ -428,9 +452,20 @@ const StoryTable: React.FC<StoryTableProps> = ({
                                                     </div>
 
                                                     <div className="mb-4 flex flex-col gap-2 flex-grow">
-                                                        {/* UNIFIED CONTAINER FOR TEXT SPLITS (One Textbox Logic) */}
-                                                        <div className="bg-slate-950/40 rounded border border-slate-700 p-3 shadow-sm min-h-[80px] whitespace-pre-line leading-relaxed font-light text-xs text-slate-300">
-                                                            {renderSplitText(scene.narrativeText)}
+                                                        {/* SINGLE TEXTAREA — all segments joined by newline */}
+                                                        <textarea
+                                                            className="w-full min-h-[5rem] bg-slate-950 border border-slate-700 rounded p-2 text-xs text-slate-300 resize-y focus:border-blue-500 outline-none font-mono leading-relaxed"
+                                                            value={(frame.splitText || []).join('\n')}
+                                                            onChange={(e) => {
+                                                                const lines = e.target.value.split('\n').filter(l => l.trim());
+                                                                onUpdateSplitText(scene.id, frame.id, lines.length > 0 ? lines : [e.target.value]);
+                                                            }}
+                                                            placeholder="Tiap baris = 1 segmen timing..."
+                                                        />
+                                                        {/* Word count */}
+                                                        <div className={`text-[9px] text-right font-mono ${(scene.narrativeText || '').split(/\s+/).filter(Boolean).length > 15 ? 'text-red-400' : 'text-slate-500'}`}>
+                                                            {(scene.narrativeText || '').split(/\s+/).filter(Boolean).length} words
+                                                            <span className="text-slate-600 ml-1">(max 15)</span>
                                                         </div>
                                                     </div>
                                                     
@@ -452,11 +487,34 @@ const StoryTable: React.FC<StoryTableProps> = ({
                                                                             </option>
                                                                         ))}
                                                                     </select>
-                                                                    <span className="text-[8px] text-slate-500 italic truncate leading-tight">
-                                                                        {currentSceneMode
-                                                                            ? (SCENE_MODE_LABELS[currentSceneMode as SceneMode] || currentSceneMode)
-                                                                            : SCENE_TYPE_FUNCTIONS[currentSceneType]}
-                                                                    </span>
+                                                                    {/* Sub-scene type (Scene Mode) */}
+                                                                    {currentSceneMode && (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex gap-1 items-center">
+                                                                                <select
+                                                                                    className="flex-1 text-[9px] font-bold font-mono px-2 py-1 rounded border text-center bg-slate-850 text-slate-400 border-slate-700 cursor-pointer outline-none hover:border-slate-500 focus:border-blue-500"
+                                                                                    value={currentSceneMode}
+                                                                                    onChange={(e) => onUpdateSceneMode(scene.id, scene.frames[0].id, e.target.value as SceneMode)}
+                                                                                >
+                                                                                    {(SCENE_TYPE_MODES[currentSceneType] || []).length > 0
+                                                                                        ? (SCENE_TYPE_MODES[currentSceneType] || []).map((sm: string) => (
+                                                                                            <option key={sm} value={sm}>
+                                                                                                {SCENE_MODE_LABELS[sm as SceneMode] || sm}
+                                                                                            </option>
+                                                                                        ))
+                                                                                        : (Object.keys(SCENE_MODE_LABELS) as SceneMode[]).map((sm) => (
+                                                                                            <option key={sm} value={sm}>
+                                                                                                {SCENE_MODE_LABELS[sm]}
+                                                                                            </option>
+                                                                                        ))
+                                                                                    }
+                                                                                </select>
+                                                                            </div>
+                                                                            <span className="text-[7px] text-slate-600 italic leading-tight">
+                                                                                {SCENE_TYPE_FUNCTIONS[currentSceneType]}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })()}
@@ -470,50 +528,6 @@ const StoryTable: React.FC<StoryTableProps> = ({
                                         </div>
                                     </td>
                                 )}
-
-                                {/* 2. Split Text Column */}
-                                <td className="p-4 align-top border-r border-slate-700 h-full">
-                                    <div className="flex flex-col h-full">
-                                        <div className="flex flex-col gap-2 mb-4 flex-1">
-                                            {(frame.splitText || []).map((textSeg, segIdx) => (
-                                                <div key={segIdx} className="relative group flex-1 flex flex-col">
-                                                    <textarea
-                                                        className="w-full h-full min-h-[100px] bg-slate-950 border border-slate-700 rounded p-2 text-xs text-slate-300 resize-none focus:border-blue-500 outline-none"
-                                                        value={textSeg}
-                                                        onChange={(e) => handleSplitTextChange(scene.id, frame.id, segIdx, e.target.value, frame.splitText)}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        
-                                        {/* Render Button in the last frame of the scene */}
-                                        {isLastFrame && (
-                                            <div className="mt-auto pt-2 border-t border-slate-800">
-                                                <button 
-                                                    onClick={() => onGeneratePrompts(scene.id)}
-                                                    disabled={scene.isGeneratingPrompts}
-                                                    className={`w-full py-3 px-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border transition-all shadow-lg flex items-center justify-center gap-2 ${
-                                                        scene.isGeneratingPrompts 
-                                                        ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-wait' 
-                                                        : 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300 hover:bg-indigo-600/30 hover:border-indigo-400'
-                                                    }`}
-                                                >
-                                                    {scene.isGeneratingPrompts ? (
-                                                        <>
-                                                            <RefreshCw className="w-3 h-3 animate-spin" />
-                                                            {t.generating}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Sparkles className="w-3 h-3" />
-                                                            {t.generatePrompts}
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
 
                                 {/* 3. Prompt Column */}
                                 <td className="p-4 align-top border-r border-slate-700">

@@ -23,7 +23,7 @@ import {
   ChevronDown,
   X
 } from 'lucide-react';
-import { AppState, DEFAULT_SYSTEM_PROMPT, ReferenceImage, StoryScene, SceneType, SceneMode, LLMProvider, ILMU_LIDI_STYLE, ILMU_MENTAL_STYLE, ILMU_SURVIVAL_STYLE, ILMU_NYANTUY_STYLE, SCENE_TYPE_MODES } from './types';
+import { AppState, DEFAULT_SYSTEM_PROMPT, ReferenceImage, StoryScene, SceneType, SceneMode, LLMProvider, ILMU_LIDI_STYLE, ILMU_MENTAL_STYLE, ILMU_SURVIVAL_STYLE, ILMU_NYANTUY_STYLE, ANCIENT_SKETCH_STYLE, SCENE_TYPE_MODES } from './types';
 import FileUpload from './components/FileUpload';
 import StoryTable from './components/StoryTable';
 import AudioPlayer from './components/AudioPlayer';
@@ -33,72 +33,23 @@ import {
   generateSceneImage, 
   refineScenePrompt, 
   generatePromptsFromFrames,
+  batchGeneratePrompts,
+  analyzeNarrativeSplitScenes,
+  batchGenerateTypesAndPrompts,
   detectCharactersFromNarrative,
   generateCharacterPrompt,
   transformToVoiceDirector,
   generateTTS
 } from './services/geminiService';
 
-// Helper to distribute items into buckets
-const distributeItems = (items: string[], count: number, separator: string): string[] => {
-    const result: string[] = new Array(count).fill("");
-    const base = Math.floor(items.length / count);
-    const extra = items.length % count;
-    let current = 0;
-    
-    for (let i = 0; i < count; i++) {
-        const take = base + (i < extra ? 1 : 0);
-        const slice = items.slice(current, current + take);
-        result[i] = slice.join(separator);
-        current += take;
-    }
-    return result;
-};
-
-// Robust text distributor that falls back from Sentences -> Clauses -> Words
-const distributeText = (text: string, count: number): string[] => {
-    if (count <= 1) return [text];
-    const cleanText = text.trim();
-    if (!cleanText) return new Array(count).fill("");
-
-    // Strategy 1: Split by Sentences
-    const sentenceRegex = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
-    const sentences = cleanText.match(sentenceRegex)?.map(s => s.trim()).filter(s => s) || [cleanText];
-    
-    if (sentences.length >= count) {
-        return distributeItems(sentences, count, " ");
-    }
-
-    // Strategy 2: Split by Clauses (Commas, Semicolons, Uppercase transitions)
-    const clauseParts = cleanText.split(/([,;])/);
-    const clauses: string[] = [];
-    
-    for (let i = 0; i < clauseParts.length; i += 2) {
-        const part = clauseParts[i];
-        const delim = clauseParts[i + 1] || "";
-        const combined = (part + delim).trim();
-        if (combined) {
-            clauses.push(combined);
-        }
-    }
-    
-    if (clauses.length >= count) {
-        return distributeItems(clauses, count, " ");
-    }
-
-    // Strategy 3: Split by Words (Fallback)
-    const words = cleanText.split(/\s+/);
-    return distributeItems(words, count, " ");
-};
-
-// Split text into chunks of 2-20 words, combining sentences when possible.
-// Used for "2. Pembagian Kata" column — each row = one chunk of ~2-20 words.
-const splitTextByWordCount = (text: string, minWords: number = 2, maxWords: number = 20): string[] => {
+// Split text into chunks of 3-15 words, combining sentences when possible.
+// Used for "2. Pembagian Kata" column — each row = one chunk of ~3-15 words.
+const splitTextByWordCount = (text: string, minWords: number = 3, maxWords: number = 15): string[] => {
     const cleanText = text.trim();
     if (!cleanText) return [];
 
-    // Step 1: split into sentences
-    const sentenceRegex = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
+    // Step 1: split into sentences (handle quotes after punctuation: ?" ." !")
+    const sentenceRegex = /[^.!?\n]+[.!?]+["'」』）]?|[^.!?\n]+$/g;
     const sentences = cleanText.match(sentenceRegex)?.map(s => s.trim()).filter(s => s) || [cleanText];
 
     const chunks: string[] = [];
@@ -155,37 +106,338 @@ const splitTextByWordCount = (text: string, minWords: number = 2, maxWords: numb
     return chunks.length > 0 ? chunks : [cleanText];
 };
 
-// Re-split each scene's splitText using local word-count-based logic (2-20 words).
-// Also merges consecutive short scenes so each row has ~2-20 words.
+/** Default scene mode for each scene type */
+const DEFAULT_MODES: Record<string, SceneMode> = {
+  'host-direct': 'direct',
+  'contrast': 'side-by-side',
+  'metaphor-scene': 'object',
+  'typography-hero': 'single-word',
+  'multi-panel': 'panel-2',
+};
+
+const SCENE_TYPES: SceneType[] = [
+  'host-direct', 'contrast', 'metaphor-scene', 'typography-hero', 'multi-panel'
+];
+
+function getDefaultMode(type: SceneType): SceneMode {
+  return DEFAULT_MODES[type] || 'direct';
+}
+
+/**
+ * Pick a different scene type for consecutive duplicate breaking.
+ * Uses ordered priority rules — 5 universal scene primitives.
+ * Decision flow: host-direct → contrast → metaphor → typography → multi-panel
+ */
+function getAlternateType(
+  currentType: SceneType,
+  narrativeText: string,
+  index: number,
+  allScenes: { sceneType: SceneType }[]
+): SceneType {
+  const text = narrativeText.toLowerCase();
+  const recentTypes = new Set<SceneType>();
+  for (let j = Math.max(0, index - 3); j < index; j++) {
+    recentTypes.add(allScenes[j].sceneType);
+  }
+
+  // Helper to check if type is available
+  const canUse = (t: SceneType) => t !== currentType && !recentTypes.has(t);
+
+  // --- PRIORITY 1: Content-based hints (strong signals) ---
+
+  // Kontras/perbandingan → contrast
+  if (canUse('contrast') && (
+    text.includes('tapi') || text.includes('tetapi') || text.includes('namun') ||
+    text.includes('sedangkan') || text.includes('sementara') || text.includes('padahal') ||
+    text.includes('sebaliknya') || text.includes('bukan') || text.includes('beda') ||
+    text.includes('berbeda') || text.includes('dulu') || text.includes('sekarang')
+  )) return 'contrast';
+
+  // Emosi/perasaan/abstrak → metaphor-scene
+  if (canUse('metaphor-scene') && (
+    text.includes('capek') || text.includes('lelah') || text.includes('sedih') ||
+    text.includes('senang') || text.includes('takut') || text.includes('cemas') ||
+    text.includes('marah') || text.includes('kecewa') || text.includes('rasa') ||
+    text.includes('ngeras') || text.includes('perasaan') || text.includes('emosi') ||
+    text.includes('seperti') || text.includes('bagai') || text.includes('ibarat') ||
+    text.includes('beban') || text.includes('pikiran')
+  )) return 'metaphor-scene';
+
+  // Short rhetorical question → host-direct
+  const wordCount = text.split(/\s+/).length;
+  if (canUse('host-direct') && text.includes('?') && wordCount <= 12)
+    return 'host-direct';
+
+  // Direct address → host-direct
+  if (canUse('host-direct') && (
+    text.includes('lo') || text.includes('gue') || text.includes('tau nggak') ||
+    text.includes('tahu nggak') || text.includes('nggak')
+  )) return 'host-direct';
+
+  // Keyword definisi/istilah → typography-hero
+  if (canUse('typography-hero') && (
+    text.includes('istilah') || text.includes('namanya') || text.includes('definisi') ||
+    text.includes('adalah') || text.includes('ialah') || text.includes('yaitu') ||
+    text.includes('singkatnya') || text.includes('intinya') || text.includes('pokoknya')
+  )) return 'typography-hero';
+
+  // Sequence/urutan → multi-panel
+  if (canUse('multi-panel') && (
+    text.includes('lalu') || text.includes('kemudian') || text.includes('setelah') ||
+    text.includes('langkah') || text.includes('tahap') || text.includes('pertama') ||
+    text.includes('kedua') || text.includes('ketiga')
+  )) return 'multi-panel';
+
+  // --- PRIORITY 2: Keyword scoring across 5 types ---
+  const keywords: Record<string, string[]> = {
+    'host-direct': ['lo', 'gue', 'kamu', 'kita', '?', 'tau nggak', 'nggak'],
+    'contrast': ['tapi', 'padahal', 'bukan', 'beda', 'dulu', 'sekarang'],
+    'metaphor-scene': ['seperti', 'bagai', 'ibarat', 'seolah', 'beban', 'pikiran', 'rasa'],
+    'typography-hero': ['adalah', 'ialah', 'yaitu', 'istilah', 'definisi', 'pokoknya', 'intinya'],
+    'multi-panel': ['lalu', 'kemudian', 'setelah', 'langkah', 'tahap', 'pertama', 'kedua'],
+  };
+
+  let bestType: SceneType | null = null;
+  let bestScore = 0;
+  for (const type of SCENE_TYPES) {
+    if (!canUse(type)) continue;
+    let score = 0;
+    for (const kw of (keywords[type] || [])) {
+      if (text.includes(kw)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestType = type;
+    }
+  }
+  if (bestType) return bestType;
+
+  // --- PRIORITY 3: Default fallback ---
+  // host-direct is the universal default — always safe
+  if (canUse('host-direct')) return 'host-direct';
+
+  // Rotation as last resort
+  const idx = SCENE_TYPES.indexOf(currentType);
+  for (let offset = 1; offset < SCENE_TYPES.length; offset++) {
+    const candidate = SCENE_TYPES[(idx + offset) % SCENE_TYPES.length];
+    if (canUse(candidate)) return candidate;
+  }
+  return SCENE_TYPES[(idx + 1) % SCENE_TYPES.length];
+}
+
+// Re-split each scene's splitText using local word-count-based logic (3-15 words).
+// Also merges consecutive short scenes AND splits scenes that exceed 15 words.
 const postProcessScenes = (scenes: StoryScene[]): StoryScene[] => {
     if (scenes.length === 0) return scenes;
 
-    const MIN_WORDS = 2;
-    const MAX_WORDS = 20;
+    const MIN_WORDS = 3;
+    const MAX_WORDS = 15;
+
+    // --- PASS 1: Split scenes that exceed MAX_WORDS ---
+    // Split by sentences to keep each scene within 3-15 words
+    const splitScenes: StoryScene[] = [];
+    for (const scene of scenes) {
+        const wordCount = scene.narrativeText.split(/\s+/).filter(w => w.length > 0).length;
+        if (wordCount <= MAX_WORDS) {
+            splitScenes.push(scene);
+            continue;
+        }
+
+        // Scene too long — split by sentences (handle quotes after punctuation)
+        const sentences = scene.narrativeText
+            .split(/(?<=[.!?]["'」』）]?)\s+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        let currentChunk: string[] = [];
+        let currentWc = 0;
+
+        for (const sentence of sentences) {
+            const sentenceWc = sentence.split(/\s+/).filter(w => w.length > 0).length;
+
+            if (currentWc + sentenceWc > MAX_WORDS && currentWc >= MIN_WORDS) {
+                // Flush current chunk as a new scene
+                const chunkText = currentChunk.join(' ');
+                const firstFrame = scene.frames[0];
+
+                // Force-split flushed chunk if it still exceeds MAX_WORDS
+                const flushWc = chunkText.split(/\s+/).filter(w => w.length > 0).length;
+                if (flushWc > MAX_WORDS) {
+                    const words = chunkText.split(/\s+/).filter(w => w.length > 0);
+                    for (let k = 0; k < words.length; k += MAX_WORDS) {
+                        const wordChunk = words.slice(k, k + MAX_WORDS).join(" ");
+                        splitScenes.push({
+                            ...scene,
+                            id: `scene-qc-${Date.now()}-${splitScenes.length}`,
+                            narrativeText: wordChunk,
+                            frames: firstFrame ? [{
+                                ...firstFrame,
+                                id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                                splitText: [],
+                            }] : [{
+                                id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                                sceneType: scene.frames[0]?.sceneType || 'host-direct' as SceneType,
+                                sceneMode: scene.frames[0]?.sceneMode || 'direct' as SceneMode,
+                                visualPrompt: "",
+                                splitText: [],
+                                isGenerating: false
+                            }]
+                        });
+                    }
+                } else {
+                    splitScenes.push({
+                        ...scene,
+                        id: `scene-qc-${Date.now()}-${splitScenes.length}`,
+                        narrativeText: chunkText,
+                        frames: firstFrame ? [{
+                            ...firstFrame,
+                            id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                            splitText: [],
+                        }] : [{
+                            id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                            sceneType: scene.frames[0]?.sceneType || 'host-direct' as SceneType,
+                            sceneMode: scene.frames[0]?.sceneMode || 'direct' as SceneMode,
+                            visualPrompt: "",
+                            splitText: [],
+                            isGenerating: false
+                        }]
+                    });
+                }
+
+                // If this single new sentence still exceeds MAX_WORDS, force-split at word boundary
+                if (sentenceWc > MAX_WORDS) {
+                    const words = sentence.split(/\s+/).filter(w => w.length > 0);
+                    for (let k = 0; k < words.length; k += MAX_WORDS) {
+                        const wordChunk = words.slice(k, k + MAX_WORDS).join(" ");
+                        splitScenes.push({
+                            ...scene,
+                            id: `scene-qc-${Date.now()}-${splitScenes.length}`,
+                            narrativeText: wordChunk,
+                            frames: firstFrame ? [{
+                                ...firstFrame,
+                                id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                                splitText: [],
+                            }] : [{
+                                id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                                sceneType: scene.frames[0]?.sceneType || 'host-direct' as SceneType,
+                                sceneMode: scene.frames[0]?.sceneMode || 'direct' as SceneMode,
+                                visualPrompt: "",
+                                splitText: [],
+                                isGenerating: false
+                            }]
+                        });
+                    }
+                    currentChunk = [];
+                    currentWc = 0;
+                } else {
+                    currentChunk = [sentence];
+                    currentWc = sentenceWc;
+                }
+            } else {
+                currentChunk.push(sentence);
+                currentWc += sentenceWc;
+            }
+        }
+
+        // Flush remaining chunk
+        if (currentChunk.length > 0) {
+            const chunkText = currentChunk.join(' ');
+            const firstFrame = scene.frames[0];
+
+            // Force-split remaining chunk if it exceeds MAX_WORDS
+            const flushWc = chunkText.split(/\s+/).filter(w => w.length > 0).length;
+            if (flushWc > MAX_WORDS) {
+                const words = chunkText.split(/\s+/).filter(w => w.length > 0);
+                for (let k = 0; k < words.length; k += MAX_WORDS) {
+                    const wordChunk = words.slice(k, k + MAX_WORDS).join(" ");
+                    splitScenes.push({
+                        ...scene,
+                        id: `scene-qc-${Date.now()}-${splitScenes.length}`,
+                        narrativeText: wordChunk,
+                        frames: firstFrame ? [{
+                            ...firstFrame,
+                            id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                            splitText: [],
+                        }] : [{
+                            id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                            sceneType: scene.frames[0]?.sceneType || 'host-direct' as SceneType,
+                            sceneMode: scene.frames[0]?.sceneMode || 'direct' as SceneMode,
+                            visualPrompt: "",
+                            splitText: [],
+                            isGenerating: false
+                        }]
+                    });
+                }
+            } else {
+                splitScenes.push({
+                    ...scene,
+                    id: `scene-qc-${Date.now()}-${splitScenes.length}`,
+                    narrativeText: chunkText,
+                    frames: firstFrame ? [{
+                        ...firstFrame,
+                        id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                        splitText: [],
+                    }] : [{
+                        id: `frame-qc-${Date.now()}-${splitScenes.length}`,
+                        sceneType: scene.frames[0]?.sceneType || 'host-direct' as SceneType,
+                        sceneMode: scene.frames[0]?.sceneMode || 'direct' as SceneMode,
+                        visualPrompt: "",
+                        splitText: [],
+                        isGenerating: false
+                    }]
+                });
+            }
+        }
+    }
+
+    // --- PASS 1.5: Break consecutive duplicate sceneTypes ---
+    for (let i = 1; i < splitScenes.length; i++) {
+      const prevType = splitScenes[i - 1].frames[0]?.sceneType;
+      const currType = splitScenes[i].frames[0]?.sceneType;
+      if (currType && prevType && currType === prevType) {
+        const allTypes = splitScenes.map(s => ({ sceneType: s.frames[0]?.sceneType || 'host-direct' as SceneType }));
+        const alternate = getAlternateType(currType, splitScenes[i].narrativeText, i, allTypes);
+        if (splitScenes[i].frames[0]) {
+          splitScenes[i].frames[0].sceneType = alternate;
+          splitScenes[i].frames[0].sceneMode = getDefaultMode(alternate);
+        }
+      }
+    }
+
+    // --- PASS 2: Merge consecutive short scenes ---
     const mergedScenes: StoryScene[] = [];
 
-    for (let i = 0; i < scenes.length; i++) {
-        const current = scenes[i];
+    for (let i = 0; i < splitScenes.length; i++) {
+        const current = splitScenes[i];
         let mergedNarrative = current.narrativeText;
         const scenesToMerge: StoryScene[] = [current];
         let j = i + 1;
 
-        while (j < scenes.length) {
-            const nextWc = scenes[j].narrativeText.split(/\s+/).length;
+        while (j < splitScenes.length) {
+            const nextWc = splitScenes[j].narrativeText.split(/\s+/).length;
             const currentWc = mergedNarrative.split(/\s+/).length;
 
-            if (currentWc >= MIN_WORDS) break;
-            if (currentWc + nextWc > MAX_WORDS) {
-                // If still below MIN, try adding one more short scene to reach minimum
-                if (nextWc <= MAX_WORDS - currentWc) {
-                    mergedNarrative += " " + scenes[j].narrativeText;
-                    scenesToMerge.push(scenes[j]);
+            // Also merge very short trailing scenes (< MIN_WORDS) that fit within limit
+            if (currentWc >= MIN_WORDS) {
+                if (nextWc < MIN_WORDS && currentWc + nextWc <= MAX_WORDS + 4) {
+                    // Very short trailing scene — merge it
+                    mergedNarrative += " " + splitScenes[j].narrativeText;
+                    scenesToMerge.push(splitScenes[j]);
                     j++;
                 }
                 break;
             }
-            mergedNarrative += " " + scenes[j].narrativeText;
-            scenesToMerge.push(scenes[j]);
+            if (currentWc + nextWc > MAX_WORDS) {
+                // If still below MIN, try adding one more short scene to reach minimum
+                if (nextWc <= MAX_WORDS - currentWc) {
+                    mergedNarrative += " " + splitScenes[j].narrativeText;
+                    scenesToMerge.push(splitScenes[j]);
+                    j++;
+                }
+                break;
+            }
+            mergedNarrative += " " + splitScenes[j].narrativeText;
+            scenesToMerge.push(splitScenes[j]);
             j++;
         }
 
@@ -196,17 +448,21 @@ const postProcessScenes = (scenes: StoryScene[]): StoryScene[] => {
             // Multiple short scenes merged into one — reduce to a single frame
             // (they are now one visual unit)
             const firstFrame = scenesToMerge[0].frames[0];
+            // Check if merged text contains contrast connectors → switch to contrast
+            const mergedLower = mergedNarrative.trim().toLowerCase();
+            const contrastConnectors = ['tapi', 'tetapi', 'namun', 'sedangkan', 'sementara', 'padahal', 'sebaliknya', 'bukan', 'berbeda'];
+            const hasContrast = contrastConnectors.some(c => mergedLower.includes(c));
+            const mergedType = hasContrast ? 'contrast' as SceneType : (scenesToMerge[0].sceneType || 'host-direct');
             mergedScenes.push({
                 ...scenesToMerge[0],
+                sceneType: mergedType,
                 narrativeText: mergedNarrative.trim(),
                 frames: firstFrame ? [{
                     ...firstFrame,
-                    format: "Single Panel"
                 }] : [{
                     id: `frame-${Date.now()}-${mergedScenes.length}`,
-                    format: "Single Panel",
                     sceneType: 'host-direct' as SceneType,
-                    sceneMode: 'intro' as SceneMode,
+                    sceneMode: 'direct' as SceneMode,
                     visualPrompt: "",
                     splitText: [],
                     isGenerating: false
@@ -253,6 +509,29 @@ const postProcessScenes = (scenes: StoryScene[]): StoryScene[] => {
             frames: scene.frames.map((f, idx) => ({ ...f, splitText: [distributedChunks[idx] || ""] }))
         };
     });
+    // PASS 3: Downgrade multi-panel jika chunk count < panel count
+    return mergedScenes.map(scene => {
+        const sceneFrame = scene.frames[0];
+        if (!sceneFrame || !sceneFrame.sceneType?.startsWith('multi-panel')) return scene;
+        const panelMatch = sceneFrame.sceneType.match(/panel-(\d+)/);
+        if (!panelMatch) return scene;
+        const panelCount = parseInt(panelMatch[1]);
+        const chunkCount = sceneFrame.splitText?.length || 1;
+        if (panelCount > 2 && chunkCount <= 2) {
+            const downgradedType = `multi-panel panel-${Math.min(chunkCount, 2)}` as SceneType;
+            return {
+                ...scene,
+                frames: scene.frames.map(f => ({
+                    ...f,
+                    sceneType: downgradedType,
+                    sceneMode: f.sceneMode === 'panel-3'
+                        ? 'panel-2' as SceneMode
+                        : f.sceneMode
+                }))
+            };
+        }
+        return scene;
+    });
 };
 
 const TRANSLATIONS: Record<'id' | 'en', any> = {
@@ -272,10 +551,11 @@ const TRANSLATIONS: Record<'id' | 'en', any> = {
     contextNarrative: "1. Konteks Narasi (Lengkap)",
     contextPlaceholder: "Tempelkan cerita lengkap untuk konteks yang lebih baik...",
     refImages: "2. Referensi Gambar (1-10 Karakter)",
-    targetParagraph: "3. Paragraf Target Visual",
+    visualReference: "3. Referensi Visual",
+    targetParagraph: "4. Paragraf Target Visual",
     targetPlaceholder: "Paste paragraf spesifik yang ingin divisualisasikan menjadi storyboard...",
-    analyzeBtn: "Buat Storyboard",
-    analyzing: "Sedang Menganalisis...",
+    analyzeBtn: "Bagi Scene",
+    analyzing: "Sedang Membagi Scene...",
     resultTitle: "Visual Storyboard Result",
     systemReady: "System Ready",
     totalScenes: "Total Scenes",
@@ -335,10 +615,11 @@ const TRANSLATIONS: Record<'id' | 'en', any> = {
     contextNarrative: "1. Narrative Context (Full)",
     contextPlaceholder: "Paste full story for better context...",
     refImages: "2. Reference Images (1-10 Characters)",
-    targetParagraph: "3. Visual Target Paragraph",
+    visualReference: "3. Visual Reference",
+    targetParagraph: "4. Visual Target Paragraph",
     targetPlaceholder: "Paste the specific paragraph you want to visualize into a storyboard...",
-    analyzeBtn: "Generate Storyboard",
-    analyzing: "Analyzing...",
+    analyzeBtn: "Split Scenes",
+    analyzing: "Splitting Scenes...",
     resultTitle: "Visual Storyboard Result",
     systemReady: "System Ready",
     totalScenes: "Total Scenes",
@@ -444,7 +725,8 @@ const TTS_PRESETS: Record<string, string> = {
   'Ilmu Survival': "Gunakan persona Survivor yang TANGGUH, WASPADA, namun tetap TENANG. Gunakan PITCH SEDANG-RENDAH, tempo SEDIKIT LEBIH LAMBAT dan TEGAS. Suara harus terdengar SERIUS, BERWIBAWA, dan PENGALAMAN. Beri JEDA MANUSIAWI yang cukup panjang sebelum poin krusial untuk menciptakan ketegangan. Gunakan intonasi yang datar namun penuh penekanan pada kata-kata kunci keselamatan. Sampaikan materi dengan gaya 'dengerin, ini masalah hidup dan mati'.",
   'Ilmu Nyantuy': "Gunakan persona Teman Cerita yang KASUAL dan BERSAHABAT. PENTING: Ikuti aturan teknis berikut secara ketat: 1. Gunakan PITCH SEDANG, hindari nada melengking, hindari nada terlalu berat. 2. Gunakan TEMPO HIDUP & AGAK LEBIH CEPAT, sekitar 150 kata per menit, tetapi tetap mengalir wajar. Bicaralah dengan ritme orang yang sedang ngobrol seru — antusias, bukan terburu-buru. Jangan melambat. 3. Suara harus NATURAL DAN BERCELOTEH (Conversational). Tunjukkan pembawaan rileks seolah sedang menjelaskan sesuatu yang menarik sambil menikmati segelas kopi. Jangan kaku membacakan teks lurus bak penyiar berita. 4. Terapkan JEDA MANUSIAWI. Beri jeda sepersekian detik sebelum membeberkan fakta penting, seolah sedang berpikir memilah kata. Gunakan ayunan intonasi pada akhir kalimat tanya untuk memancing rasa penasaran. 5. Sampaikan materi psikologi dengan gaya akrab 'eh dengerin deh'. Biarkan penyampaian terasa sedikit spontan supaya pendengar merasa sedang berinteraksi dengan manusia sungguhan:",
   'Norman': "Gunakan persona yang formal, informatif, dan sedikit kaku seperti penyiar berita. Gunakan pitch yang stabil, tempo yang teratur, dan intonasi yang datar. Hindari gaya berceloteh atau jeda yang terlalu lama. Sampaikan materi secara langsung dan objektif.",
-  'Ilmu Mental': "Gunakan persona Psikolog yang TENANG, BERWIBAWA, dan EMPATIK. Gunakan PITCH SEDANG, tidak tinggi tidak rendah. Gunakan TEMPO SEDANG, tidak cepat tidak lambat, mengalir tenang seperti sedang sesi konseling. Suara harus NATURAL dan TEDUH, seolah sedang berbicara satu-satu dengan pendengar di ruang terapi. Beri JEDA MANUSIAWI sebelum mengungkapkan insight psikologis yang penting. Gunakan intonasi yang LEMBUT dan MENENANGKAN pada akhir kalimat. Sampaikan materi dengan gaya reflektif 'pernahkah lo merasa...' atau 'coba lo pikirkan...'. Hindari nada menghakimi. Buat pendengar merasa DIPAHAMI, bukan dikuliahi."
+  'Ilmu Mental': "Gunakan persona Psikolog yang TENANG, BERWIBAWA, dan EMPATIK. Gunakan PITCH SEDANG, tidak tinggi tidak rendah. Gunakan TEMPO SEDANG, tidak cepat tidak lambat, mengalir tenang seperti sedang sesi konseling. Suara harus NATURAL dan TEDUH, seolah sedang berbicara satu-satu dengan pendengar di ruang terapi. Beri JEDA MANUSIAWI sebelum mengungkapkan insight psikologis yang penting. Gunakan intonasi yang LEMBUT dan MENENANGKAN pada akhir kalimat. Sampaikan materi dengan gaya reflektif 'pernahkah lo merasa...' atau 'coba lo pikirkan...'. Hindari nada menghakimi. Buat pendengar merasa DIPAHAMI, bukan dikuliahi.",
+  'Ancient Sketch': "Use the persona of a calm, curious storyteller with a dry sense of humor. Use MEDIUM PITCH — not too high, not too low. Use MEDIUM TEMPO around 130-140 words per minute, flowing naturally like someone sharing strange facts by a campfire. Voice should be NATURAL and CONVERSATIONAL — intrigued, not lecturing. Add HUMAN PAUSES before shocking revelations to let the information land. Use a storytelling cadence with slight rises in intonation at the end of rhetorical questions. Sound fascinated by the facts you are revealing. Keep the tone wry and slightly amused — like you are letting the audience in on a dark secret about human history. Never be preachy or academic. Speak as if you are saying 'can you believe this?' at the end of every sentence."
 };
 
 const App: React.FC = () => {
@@ -465,6 +747,8 @@ const App: React.FC = () => {
     easterEggCount: 1,
     easterEggTypes: ['pop culture'],
     negativePrompt: '',
+    visualReference: '',
+    enforceObserver: true,
     language: 'id',
     geminiApiKey: '',
     isDetectingCharacters: false,
@@ -812,7 +1096,8 @@ const App: React.FC = () => {
         state.easterEggTypes,
         state.negativePrompt,
         state.language,
-        state.geminiApiKey
+        state.geminiApiKey,
+        state.enforceObserver
       );
 
       const resplitScenes = postProcessScenes(scenes);
@@ -832,26 +1117,11 @@ const App: React.FC = () => {
         ...prev,
         scenes: prev.scenes.map(scene => {
             if (scene.id !== sceneId) return scene;
-
             const newSplitTexts = splitTextByWordCount(newText);
-
-            // Single-frame scene: all chunks go into the single frame
-            if (scene.frames.length === 1) {
-                return { 
-                    ...scene, 
-                    narrativeText: newText, 
-                    frames: scene.frames.map((frame) => ({ ...frame, splitText: newSplitTexts }))
-                };
-            }
-
-            // Multi-frame scene: each frame gets its own chunk
             return { 
                 ...scene, 
                 narrativeText: newText, 
-                frames: scene.frames.map((frame, idx) => ({ 
-                    ...frame, 
-                    splitText: [newSplitTexts[idx] || ""] 
-                }))
+                frames: scene.frames.map((frame) => ({ ...frame, splitText: newSplitTexts }))
             };
         })
     }));
@@ -863,9 +1133,8 @@ const App: React.FC = () => {
         narrativeText: t.newSceneText,
         frames: [{
             id: `frame-${Date.now()}`,
-            format: "Single Panel",
             sceneType: 'host-direct' as SceneType,
-            sceneMode: 'intro' as SceneMode,
+            sceneMode: 'direct' as SceneMode,
             visualPrompt: "", 
             splitText: splitTextByWordCount(t.newSceneText),
             isGenerating: false
@@ -893,77 +1162,80 @@ const App: React.FC = () => {
     }
   }, [t.confirmDelete]);
 
-  const handleFormatChange = useCallback(async (sceneId: string, format: "Single Panel" | "Multi Panel" | "Sequence", count: number) => {
-    setState(prev => ({
-        ...prev,
-        scenes: prev.scenes.map(scene => {
-            if (scene.id !== sceneId) return scene;
+  // STEP 1: Split narrative into scenes (AI-only, no types/prompts)
+  const handleSplitScenes = useCallback(async () => {
+    const narration = state.contextNarrative.trim();
+    if (!narration) {
+        alert("Teks narasi masih kosong!");
+        return;
+    }
 
-            const targetPartsCount = format === 'Single Panel' ? 1 : count;
-            const textParts = splitTextByWordCount(scene.narrativeText);
+    setState(prev => ({ ...prev, isAnalyzing: true }));
 
-            if (format === 'Sequence') {
-                const targetCount = count;
-                let existingFrames = [...scene.frames];
-                const resultFrames = [];
+    try {
+        const derivedCharList = getCharacterListString();
+        const splitScenes = await analyzeNarrativeSplitScenes(
+            state.contextNarrative,
+            derivedCharList,
+            state.language,
+            state.geminiApiKey
+        );
 
-                for (let i = 0; i < targetCount; i++) {
-                    const formatLabel = `Sequence ${i + 1}/${targetCount}`;
-                    const splitTextForFrame = [textParts[i] || ""];
-                    const initialPrompt = i === 0 ? "" : "Referensi dari Gambar sebelumnya, tapi... ";
+        const newScenes: StoryScene[] = splitScenes.map((s, i) => ({
+            id: `scene-${Date.now()}-${i}`,
+            narrativeText: s.narrativeText,
+            frames: [{
+                id: `frame-${Date.now()}-${i}`,
+                sceneType: (s.sceneType || 'host-direct') as SceneType,
+                sceneMode: (s.sceneMode || 'direct') as SceneMode,
+                visualPrompt: '',
+                splitText: s.splitText,
+                isGenerating: false,
+                isRefining: false
+            }],
+            isRestructuring: false,
+            isGeneratingPrompts: false
+        }));
 
-                    if (i < existingFrames.length) {
-                        resultFrames.push({
-                            ...existingFrames[i],
-                            format: formatLabel,
-                            splitText: splitTextForFrame
-                        });
-                    } else {
-                        resultFrames.push({
-                            id: `frame-${Date.now()}-${i}`,
-                            format: formatLabel,
-                            visualPrompt: initialPrompt,
-                            splitText: splitTextForFrame,
-                            isGenerating: false
-                        });
-                    }
-                }
-                return { ...scene, frames: resultFrames };
+        const resplitScenes = postProcessScenes(newScenes);
+        setState(prev => ({
+            ...prev,
+            scenes: resplitScenes,
+            isAnalyzing: false
+        }));
+    } catch (error: any) {
+        setState(prev => ({ ...prev, isAnalyzing: false }));
+        alert("Gagal membagi scene: " + error.message);
+    }
+  }, [state.contextNarrative, state.language, state.geminiApiKey]);
 
-            } else {
-                const formatLabel = format === 'Single Panel' ? 'Single Panel' : `Multi Panel (${count})`;
-                const existingFrame = scene.frames[0];
-                
-                const newFrame = {
-                    ...existingFrame,
-                    format: formatLabel,
-                    splitText: textParts
-                };
-                
-                return { ...scene, frames: [newFrame] };
-            }
-        })
-    }));
-  }, []);
+  // STEP 2: Generate scene types + T2I prompts for all scenes (accepts sceneId for backward compat)
+  const handleGeneratePrompts = useCallback(async (sceneId?: string) => {
+      const targetScenes = state.scenes.filter(s => s.frames.length > 0);
+      if (targetScenes.length === 0) {
+          alert("Tidak ada scene untuk digenerate. Jalankan 'Bagi Scene' terlebih dahulu.");
+          return;
+      }
 
-  const handleGeneratePrompts = useCallback(async (sceneId: string) => {
-      const scene = state.scenes.find(s => s.id === sceneId);
-      if (!scene) return;
-
-
+      const targetIds = new Set(targetScenes.map(s => s.id));
       setState(prev => ({
           ...prev,
-          scenes: prev.scenes.map(s => s.id === sceneId ? { ...s, isGeneratingPrompts: true } : s)
+          scenes: prev.scenes.map(s => targetIds.has(s.id) ? { ...s, isGeneratingPrompts: true } : s)
       }));
 
       try {
           const derivedCharList = getCharacterListString();
-          
-          const prompts = await generatePromptsFromFrames(
+
+          const batchData = targetScenes.map(s => ({
+              sceneId: s.id,
+              narrativeText: s.narrativeText,
+              splitText: s.frames[0]?.splitText || []
+          }));
+
+          const result = await batchGenerateTypesAndPrompts(
+              batchData,
               state.contextNarrative,
               derivedCharList,
-              scene.narrativeText,
-              scene.frames,
               state.customPrompt,
               state.narratorName,
               state.narratorSuffix,
@@ -972,25 +1244,70 @@ const App: React.FC = () => {
               state.easterEggTypes,
               state.negativePrompt,
               state.language,
-              state.geminiApiKey
+              state.geminiApiKey,
+              state.enforceObserver
           );
+
+          // --- CODE-LEVEL DEDUP: force unique prompts by prepending differentiator ---
+          const stripForCompare = (prompt: string) => {
+              const noStyle = prompt.split('Anti-Mirror Clause:')[0].trim();
+              return noStyle.slice(0, 100);
+          };
+          const promptGroups: Record<string, string[]> = {};
+          const promptMap: Record<string, string> = {};
+          for (const [sceneId, data] of Object.entries(result)) {
+              const key = stripForCompare(data.visualPrompt);
+              if (!promptGroups[key]) promptGroups[key] = [];
+              promptGroups[key].push(sceneId);
+              promptMap[sceneId] = data.visualPrompt;
+          }
+          for (const [key, group] of Object.entries(promptGroups)) {
+              if (group.length <= 1) continue;
+              for (let i = 1; i < group.length; i++) {
+                  const dupId = group[i];
+                  const dupScene = targetScenes.find(s => s.id === dupId);
+                  const origPrompt = promptMap[dupId];
+                  if (!dupScene || !origPrompt) continue;
+                  const prefix = `[Scene: ${dupScene.narrativeText}] `;
+                  if (!origPrompt.startsWith(prefix)) {
+                      result[dupId] = { ...result[dupId], visualPrompt: prefix + origPrompt };
+                  }
+              }
+          }
 
           setState(prev => ({
               ...prev,
-              scenes: prev.scenes.map(s => s.id === sceneId ? { 
-                  ...s, 
-                  isGeneratingPrompts: false,
-                  frames: s.frames.map((f, i) => ({
-                      ...f,
-                      visualPrompt: prompts[i] || f.visualPrompt // Fallback
-                  }))
-              } : s)
+              scenes: prev.scenes.map(s => {
+                  if (!targetIds.has(s.id)) return s;
+                  const info = result[s.id];
+                  if (!info) {
+                    // Auto-fill empty prompt with fallback based on narrative
+                    const fallbackPrompt = `[host-direct] ${s.narrativeText}\n${state.styleSuffix}`;
+                    return {
+                      ...s,
+                      isGeneratingPrompts: false,
+                      frames: s.frames.map((f) => ({ ...f, visualPrompt: f.visualPrompt || fallbackPrompt }))
+                    };
+                  }
+                  const hasEmptyPrompt = !info.visualPrompt || !info.visualPrompt.trim();
+                  return {
+                      ...s,
+                      isGeneratingPrompts: false,
+                      frames: s.frames.map((f, i) => ({
+                          ...f,
+                          sceneType: info.sceneType || f.sceneType,
+                          sceneMode: info.sceneMode || f.sceneMode,
+                          visualPrompt: hasEmptyPrompt
+                            ? (f.visualPrompt || `[${info.sceneType || f.sceneType}] ${s.narrativeText}\n${state.styleSuffix}`)
+                            : info.visualPrompt || f.visualPrompt
+                      }))
+                  };
+              })
           }));
-
       } catch (error: any) {
           setState(prev => ({
               ...prev,
-              scenes: prev.scenes.map(s => s.id === sceneId ? { ...s, isGeneratingPrompts: false } : s)
+              scenes: prev.scenes.map(s => targetIds.has(s.id) ? { ...s, isGeneratingPrompts: false } : s)
           }));
           alert("Gagal membuat prompt: " + error.message);
       }
@@ -1028,33 +1345,7 @@ const App: React.FC = () => {
 
   const handleUpdateSceneType = useCallback((sceneId: string, frameId: string, newSceneType: SceneType) => {
     const modes = SCENE_TYPE_MODES[newSceneType];
-    const defaultMode = modes && modes.length > 0 ? modes[0] : 'intro' as SceneMode;
-    
-    // Map scene type to a short composition hint for the visual prompt
-    const compositionHints: Record<string, string> = {
-      'host-direct': 'Mascot face kamera, eye contact, gestur alami. Teks overlay floating.',
-      'icon-explainer': 'Mascot berdiri di samping IKON dengan LABEL TEKS. Ikon sebagai elemen utama.',
-      'split-contrast': 'DUA SISI dalam satu frame — kiri vs kanan. Garis pemisah di tengah. Kontras gelap/terang.',
-      'scene-interaction': 'DUA KARAKTER berinteraksi. Over-the-shoulder shot. Body language relasi.',
-      'concept-visual': 'DIAGRAM/KONSEP ABSTRAK sebagai elemen utama 60-70% frame. Mascot mengamati.',
-      'typography-hero': 'SATU KATA/FRASA BESAR sebagai hero 50-60% frame. Mascot di pojok bereaksi.',
-      'stock-footage': 'Background FOTO REALISTIS penuh frame. Mascot overlay kecil di pojok.',
-      'multi-panel': 'Frame terbagi jadi 2-4 PANEL komik, masing-masing dengan adegan sendiri.',
-      'whiteboard-list': 'PAPAN TULIS besar 60-70% frame dengan bullet points. Mascot di samping.',
-      'quote-card': 'KARTU KUTIPAN di tengah frame. Mascot di pojok kontemplatif.',
-      'data-visual': 'ANGKA BESAR + GRAFIK di tengah 60% frame. Mascot menunjuk/bereaksi.',
-      'metaphor-scene': 'METAFORA PENUH — mascot ADA DI DALAM metafora, bukan mengamati dari luar.',
-      'process-flow': 'Diagram ALUR bertahap dengan PANAH. Mascot menunjuk satu tahap. Label di setiap tahap.',
-      'pov-scene': 'Perspektif FIRST PERSON — kamera = mata karakter. Tangan di tepi frame.',
-      'cinematic-insert': 'Adegan FILM realistik — TANPA MASCOT. Pencahayaan sinematik sesuai mood.',
-      'timeline-progress': 'Garis WAKTU horizontal dengan milestone. Masa lalu pudar, masa depan cerah.',
-      'cross-section': 'IRISAN objek 70% frame — lihat ke DALAM. Label callout. Mascot di samping.',
-      'scale-compare': 'Perbandingan UKURAN — objek raksasa vs kecil. Mascot sebagai skala referensi.',
-      'drawing-live': 'TANGAN menggambar di papan — visible di tepi frame. Gambar sketsa parselesai.',
-      'transformation': 'DUA STATE — BEFORE (pudar/grayscale) vs AFTER (vibrant/glowing). Zona transisi.',
-    };
-    const hint = compositionHints[newSceneType] || '';
-    const marker = `\n[SCENE: ${newSceneType.toUpperCase().replace(/-/g, ' ')} — ${hint}]`;
+    const defaultMode = modes && modes.length > 0 ? modes[0] : 'direct' as SceneMode;
 
     setState(prev => ({
       ...prev,
@@ -1064,18 +1355,27 @@ const App: React.FC = () => {
           ...scene,
           frames: scene.frames.map(frame => {
             if (frame.id !== frameId) return frame;
-            // Update visualPrompt: replace old scene type marker or append new one
-            const oldMarkerMatch = frame.visualPrompt.match(/\n\[SCENE:.*?\]/);
-            const updatedPrompt = oldMarkerMatch
-              ? frame.visualPrompt.replace(/\n\[SCENE:.*?\]/, marker)
-              : frame.visualPrompt + marker;
-            return { ...frame, sceneType: newSceneType, sceneMode: defaultMode, visualPrompt: updatedPrompt };
+            return { ...frame, sceneType: newSceneType, sceneMode: defaultMode };
           })
         };
       })
     }));
   }, []);
 
+  const handleUpdateSceneMode = useCallback((sceneId: string, frameId: string, newSceneMode: SceneMode) => {
+    setState(prev => ({
+      ...prev,
+      scenes: prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        return {
+          ...scene,
+          frames: scene.frames.map(frame => 
+            frame.id === frameId ? { ...frame, sceneMode: newSceneMode } : frame
+          )
+        };
+      })
+    }));
+  }, []);
 
   const handleRefinePrompt = useCallback(async (sceneId: string, frameId: string, instruction: string) => {
     if (!instruction.trim()) return;
@@ -1171,13 +1471,8 @@ const App: React.FC = () => {
         });
     }
 
-    // V2.17 Update: Force Narrator ref if no character is detected
-    if (relevantRefs.length === 0) {
-        const narratorRef = state.refImages.find(img => img.data && img.name.toLowerCase().trim() === state.narratorName.toLowerCase().trim());
-        if (narratorRef) {
-            relevantRefs = [narratorRef];
-        }
-    }
+    // V2.19: NO force-narrator fallback. Figuran scenes without matching refImage
+    // generate from text description ONLY. The prompt description handles character appearance.
 
     setState(prev => ({
       ...prev,
@@ -1196,7 +1491,9 @@ const App: React.FC = () => {
           state.styleSuffix,
           state.negativePrompt,
           state.geminiApiKey,
-          frame.sceneType
+          frame.sceneType,
+          state.enforceObserver,
+          state.visualReference
       );
       
       setState(prev => ({
@@ -1220,39 +1517,6 @@ const App: React.FC = () => {
     }
   }, [state.scenes, state.refImages]);
 
-  const handleGenerateSequence = useCallback(async (sceneId: string) => {
-      const scene = state.scenes.find(s => s.id === sceneId);
-      if (!scene) return;
-      if (scene.frames.length < 2) return;
-
-      setState(prev => ({
-          ...prev,
-          scenes: prev.scenes.map(s => s.id === sceneId ? { ...s, isGeneratingSequence: true } : s)
-      }));
-
-      let lastGeneratedImage: string | undefined = undefined;
-
-      for (let i = 0; i < scene.frames.length; i++) {
-          const frame = scene.frames[i];
-          try {
-              const imageUrl = await handleGenerateImage(sceneId, frame.id, lastGeneratedImage);
-              if (imageUrl) {
-                  lastGeneratedImage = imageUrl;
-              }
-              
-          } catch (e) {
-              console.error(`Sequence generation failed at frame ${i}`, e);
-              break; 
-          }
-      }
-
-      setState(prev => ({
-        ...prev,
-        scenes: prev.scenes.map(s => s.id === sceneId ? { ...s, isGeneratingSequence: false } : s)
-      }));
-
-  }, [state.scenes, handleGenerateImage]);
-
   const handleGenerateAllImages = useCallback(async () => {
       cancelGenerationRef.current = false;
       setIsGeneratingAll(true);
@@ -1266,60 +1530,41 @@ const App: React.FC = () => {
 
           for (let sIdx = 0; sIdx < state.scenes.length; sIdx++) {
               const scene = state.scenes[sIdx];
-              let lastGeneratedImage: string | undefined = undefined;
+              const frame = scene.frames[0];
+              if (!frame) continue;
 
-              for (let fIdx = 0; fIdx < scene.frames.length; fIdx++) {
-                  if (cancelGenerationRef.current) {
-                      setGenerateAllProgress("Cancelled.");
-                      setIsGeneratingAll(false);
-                      return;
-                  }
-
-                  const frame = scene.frames[fIdx];
-                  
-                  if (frame.imageUrl) {
-                      if (scene.type === 'sequence') {
-                          lastGeneratedImage = frame.imageUrl;
-                      }
-                      continue; 
-                  }
-
-                  // Enforce 6 seconds between TRIGGERS to respect 10 RPM limit
-                  const now = Date.now();
-                  const timeSinceLastRequest = now - lastRequestTime;
-                  if (lastRequestTime > 0 && timeSinceLastRequest < 6000) {
-                      const waitTime = 6000 - timeSinceLastRequest;
-                      setGenerateAllProgress(`Waiting ${Math.ceil(waitTime/1000)}s...`);
-                      await delay(waitTime);
-                  }
-                  
-                  if (cancelGenerationRef.current) {
-                      setGenerateAllProgress("Cancelled.");
-                      setIsGeneratingAll(false);
-                      return;
-                  }
-
-                  setGenerateAllProgress(`Triggering Scene ${sIdx + 1}, Frame ${fIdx + 1}...`);
-                  lastRequestTime = Date.now();
-
-                  if (scene.type === 'sequence') {
-                      // Sequential MUST await because next frame depends on this image
-                      try {
-                          const imageUrl = await handleGenerateImage(scene.id, frame.id, lastGeneratedImage);
-                          if (imageUrl) {
-                              lastGeneratedImage = imageUrl;
-                          }
-                      } catch (e) {
-                          console.error(`Failed to generate image for Scene ${sIdx + 1}, Frame ${fIdx + 1}`, e);
-                      }
-                  } else {
-                      // Non-sequential can run in parallel background
-                      const p = handleGenerateImage(scene.id, frame.id).catch(e => {
-                          console.error(`Failed to generate image for Scene ${sIdx + 1}, Frame ${fIdx + 1}`, e);
-                      });
-                      pendingPromises.push(p);
-                  }
+              if (cancelGenerationRef.current) {
+                  setGenerateAllProgress("Cancelled.");
+                  setIsGeneratingAll(false);
+                  return;
               }
+
+              if (frame.imageUrl) {
+                  continue; 
+              }
+
+              // Enforce 6 seconds between TRIGGERS to respect 10 RPM limit
+              const now = Date.now();
+              const timeSinceLastRequest = now - lastRequestTime;
+              if (lastRequestTime > 0 && timeSinceLastRequest < 6000) {
+                  const waitTime = 6000 - timeSinceLastRequest;
+                  setGenerateAllProgress(`Waiting ${Math.ceil(waitTime/1000)}s...`);
+                  await delay(waitTime);
+              }
+              
+              if (cancelGenerationRef.current) {
+                  setGenerateAllProgress("Cancelled.");
+                  setIsGeneratingAll(false);
+                  return;
+              }
+
+              setGenerateAllProgress(`Triggering Scene ${sIdx + 1}...`);
+              lastRequestTime = Date.now();
+
+              const p = handleGenerateImage(scene.id, frame.id).catch(e => {
+                  console.error(`Failed to generate image for Scene ${sIdx + 1}`, e);
+              });
+              pendingPromises.push(p);
           }
           
           if (pendingPromises.length > 0 && !cancelGenerationRef.current) {
@@ -1408,6 +1653,7 @@ const App: React.FC = () => {
                 easterEggCount: parsed.state.easterEggCount !== undefined ? parsed.state.easterEggCount : 1,
                 easterEggTypes: parsed.state.easterEggTypes || ['pop culture'],
                 negativePrompt: parsed.state.negativePrompt || '',
+                visualReference: parsed.state.visualReference || '',
                 language: parsed.state.language || 'id'
             }));
             
@@ -1527,7 +1773,7 @@ const App: React.FC = () => {
                                 ttsVoice: 'Iapetus',
                                 ttsPreset: 'Ilmu Nyantuy'
                             }));
-                        } else if (val === 'Ilmu Mental') {
+                            } else if (val === 'Ilmu Mental') {
                             setState(p => ({
                                 ...p,
                                 narratorName: 'Ilmu Mental',
@@ -1538,6 +1784,21 @@ const App: React.FC = () => {
                                 ttsModel: 'gemini-2.5-pro-preview-tts',
                                 ttsVoice: 'Puck',  // Male voice — bisa diganti via dropdown Pilih Suara
                                 ttsPreset: 'Ilmu Mental'
+                            }));
+                        } else if (val === 'Ancient Sketch') {
+                            setState(p => ({
+                                ...p,
+                                narratorName: 'Ancient Sketch',
+                                stylePreset: 'Ancient Sketch',
+                                styleSuffix: ANCIENT_SKETCH_STYLE,
+                                easterEggCount: 0,
+                                easterEggTypes: [],
+                                narratorSuffix: '',
+                                ttsModel: 'gemini-3.1-flash-tts-preview',
+                                ttsVoice: 'Iapetus',
+                                ttsPreset: 'Ancient Sketch',
+                                language: 'en',
+                                enforceObserver: false
                             }));
                         } else {
                             setState(p => ({ ...p, stylePreset: 'Custom' }));
@@ -1550,6 +1811,7 @@ const App: React.FC = () => {
                     <option value="Ilmu Mental" className="bg-slate-900">Ilmu Mental</option>
                     <option value="Ilmu Survival" className="bg-slate-900">Ilmu Survival</option>
                     <option value="Ilmu Nyantuy" className="bg-slate-900">Ilmu Nyantuy</option>
+                    <option value="Ancient Sketch" className="bg-slate-900">Ancient Sketch</option>
                 </select>
              </div>
              <div className="h-8 w-px bg-slate-800 mx-2"></div>
@@ -1654,6 +1916,55 @@ const App: React.FC = () => {
                   </div>
               </div>
 
+              {/* Card 6: Visual Reference (single image, always sent to image generator) */}
+              <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                      <ImageIcon className="w-4 h-4 text-purple-500" /> {t.visualReference}
+                  </h3>
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center gap-3 min-h-[120px]">
+                      {state.visualReference ? (
+                          <div className="relative w-full flex flex-col items-center gap-2">
+                              <img 
+                                  src={state.visualReference} 
+                                  alt="Visual Reference" 
+                                  className="max-h-40 rounded-lg object-contain"
+                              />
+                              <button
+                                  onClick={() => setState(p => ({...p, visualReference: ''}))}
+                                  className="text-[10px] text-red-400 hover:text-red-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700"
+                              >
+                                  ✕ {t.save}
+                              </button>
+                          </div>
+                      ) : (
+                          <label className="flex flex-col items-center gap-2 cursor-pointer w-full py-6">
+                              <Upload className="w-8 h-8 text-slate-600" />
+                              <span className="text-xs text-slate-500">Click to upload a visual reference image</span>
+                              <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                          const reader = new FileReader();
+                                          reader.onload = (ev) => {
+                                              if (ev.target?.result) {
+                                                  setState(p => ({...p, visualReference: ev.target!.result as string}));
+                                              }
+                                          };
+                                          reader.readAsDataURL(file);
+                                      }
+                                  }}
+                              />
+                          </label>
+                      )}
+                      <span className="text-[9px] text-slate-600 text-center leading-tight">
+                          This image will be sent to the image generator as a visual reference for every scene
+                      </span>
+                  </div>
+              </div>
+
               {/* Advanced Settings Toggle */}
               <div className="md:col-span-12">
                   <button 
@@ -1702,9 +2013,25 @@ const App: React.FC = () => {
                                   placeholder={t.negativePlaceholder}
                                   className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-lg px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full"
                               />
-                          </div>
+                                {/* Enforce Observer Toggle */}
+                                <div className="flex items-center justify-between py-2 border-t border-slate-800/50 mt-1">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-slate-300">Enforce Narrator Observer</span>
+                                        <span className="text-[10px] text-slate-500">Auto-add narrator observing scene when no character is present</span>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer"
+                                            checked={state.enforceObserver}
+                                            onChange={(e) => setState(p => ({...p, enforceObserver: e.target.checked}))}
+                                        />
+                                        <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
 
-                          {/* Card 3: Easter Egg */}
+                            {/* Card 3: Easter Egg */}
                           <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
                               <div className="flex items-center justify-between mb-2">
                                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -1971,10 +2298,10 @@ const App: React.FC = () => {
                 <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    onClick={handleAnalyzeStory}
-                    disabled={state.isAnalyzing || !state.targetParagraph}
+                    onClick={handleSplitScenes}
+                    disabled={state.isAnalyzing || !state.contextNarrative}
                     className={`w-full py-5 rounded-2xl font-bold text-white transition-all shadow-xl flex items-center justify-center gap-3 text-lg
-                    ${state.isAnalyzing || !state.targetParagraph
+                    ${state.isAnalyzing || !state.contextNarrative
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                         : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:shadow-blue-500/25 border border-white/10'
                     }`}
@@ -2034,16 +2361,16 @@ const App: React.FC = () => {
                 scenes={state.scenes} 
                 refImages={state.refImages}
                 onGenerateImage={handleGenerateImage}
-                onGenerateSequence={handleGenerateSequence}
                 onUpdatePrompt={handleUpdatePrompt}
                 onRefinePrompt={handleRefinePrompt}
-                onFormatChange={handleFormatChange}
                 onSaveNarrative={handleSaveNarrative}
                 onAddScene={handleAddScene}
                 onDeleteScene={handleDeleteScene}
                 onUpdateSplitText={handleUpdateSplitText}
                 onUpdateSceneType={handleUpdateSceneType}
+                onUpdateSceneMode={handleUpdateSceneMode}
                 onGeneratePrompts={handleGeneratePrompts}
+                onSplitScenes={handleSplitScenes}
                 onGenerateAllImages={handleGenerateAllImages}
                 isGeneratingAll={isGeneratingAll}
                 generateAllProgress={generateAllProgress}

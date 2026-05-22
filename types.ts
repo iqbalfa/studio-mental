@@ -1,232 +1,106 @@
 export type SceneType =
   | 'host-direct'
-  | 'icon-explainer'
-  | 'split-contrast'
-  | 'scene-interaction'
-  | 'concept-visual'
-  | 'typography-hero'
-  | 'stock-footage'
-  | 'multi-panel'
-  | 'whiteboard-list'
-  | 'quote-card'
-  | 'data-visual'
+  | 'contrast'
   | 'metaphor-scene'
-  | 'process-flow'
-  | 'pov-scene'
-  | 'cinematic-insert'
-  | 'timeline-progress'
-  | 'cross-section'
-  | 'scale-compare'
-  | 'drawing-live'
-  | 'transformation';
+  | 'typography-hero'
+  | 'multi-panel';
 
 export type SceneMode =
   // host-direct modes
-  | 'intro'
-  | 'hook'
-  // icon-explainer modes
-  | 'multi-icon'
-  | 'single-icon'
-  | 'comparison'
-  // split-contrast modes
+  | 'direct'
+  // contrast modes
+  | 'side-by-side'
   | 'before-after'
-  | 'good-bad'
-  // scene-interaction modes
-  | 'duo'
-  | 'vs-group'
-  // concept-visual modes
-  | 'abstract-diagram'
-  | 'real-reference'
+  // metaphor-scene modes
+  | 'object'
+  | 'living'
   // typography-hero modes
   | 'single-word'
   | 'definition'
-  // stock-footage modes
-  | 'nature-calm'
-  | 'urban-life'
-  | 'clinical-setting'
+  | 'big-number'
   // multi-panel modes
   | 'panel-2'
-  | 'panel-3'
-  | 'panel-4'
-  // whiteboard-list modes
-  | 'bullet-points'
-  | 'numbered-list'
-  | 'checklist'
-  // quote-card modes
-  | 'expert-quote'
-  | 'provocative-quote'
-  | 'ironic-quote'
-  // data-visual modes
-  | 'big-number'
-  | 'bar-comparison'
-  | 'trend-arrow'
-  // metaphor-scene modes
-  | 'living-metaphor'
-  | 'object-metaphor'
-  | 'environment-metaphor'
-  // process-flow modes
-  | 'chain-reaction'
-  | 'cycle-loop'
-  | 'branching-path'
-  // pov-scene modes
-  | 'first-person'
-  | 'dual-pov'
-  | 'flashback'
-  // cinematic-insert modes
-  | 'emotional-scene'
-  | 'social-scene'
-  | 'memory-fragment'
-  // timeline-progress modes
-  | 'horizontal-timeline'
-  | 'evolution-steps'
-  | 'countdown-progress'
-  // cross-section modes
-  | 'brain-cutaway'
-  | 'system-inside'
-  | 'layers-reveal'
-  // scale-compare modes
-  | 'size-contrast'
-  | 'intensity-meter'
-  | 'magnifying-glass'
-  // drawing-live modes
-  | 'hand-doodle'
-  | 'ink-flow'
-  | 'chalk-talk'
-  // transformation modes
-  | 'morph-transition'
-  | 'break-free'
-  | 'fusion-split';
+  | 'panel-3';
 
 export const SCENE_TYPE_MODES: Record<SceneType, SceneMode[]> = {
-  'host-direct': ['intro', 'hook'],
-  'icon-explainer': ['multi-icon', 'single-icon', 'comparison'],
-  'split-contrast': ['before-after', 'good-bad'],
-  'scene-interaction': ['duo', 'vs-group'],
-  'concept-visual': ['abstract-diagram', 'real-reference'],
-  'typography-hero': ['single-word', 'definition'],
-  'stock-footage': ['nature-calm', 'urban-life', 'clinical-setting'],
-  'multi-panel': ['panel-2', 'panel-3', 'panel-4'],
-  'whiteboard-list': ['bullet-points', 'numbered-list', 'checklist'],
-  'quote-card': ['expert-quote', 'provocative-quote', 'ironic-quote'],
-  'data-visual': ['big-number', 'bar-comparison', 'trend-arrow'],
-  'metaphor-scene': ['living-metaphor', 'object-metaphor', 'environment-metaphor'],
-  'process-flow': ['chain-reaction', 'cycle-loop', 'branching-path'],
-  'pov-scene': ['first-person', 'dual-pov', 'flashback'],
-  'cinematic-insert': ['emotional-scene', 'social-scene', 'memory-fragment'],
-  'timeline-progress': ['horizontal-timeline', 'evolution-steps', 'countdown-progress'],
-  'cross-section': ['brain-cutaway', 'system-inside', 'layers-reveal'],
-  'scale-compare': ['size-contrast', 'intensity-meter', 'magnifying-glass'],
-  'drawing-live': ['hand-doodle', 'ink-flow', 'chalk-talk'],
-  'transformation': ['morph-transition', 'break-free', 'fusion-split'],
+  'host-direct': ['direct'],
+  'contrast': ['side-by-side', 'before-after'],
+  'metaphor-scene': ['object', 'living'],
+  'typography-hero': ['single-word', 'definition', 'big-number'],
+  'multi-panel': ['panel-2', 'panel-3'],
 };
 
 export const SCENE_TYPE_LABELS: Record<SceneType, string> = {
   'host-direct': 'Host Direct',
-  'icon-explainer': 'Icon Explainer',
-  'split-contrast': 'Split Contrast',
-  'scene-interaction': 'Scene Interaction',
-  'concept-visual': 'Concept Visual',
-  'typography-hero': 'Typography Hero',
-  'stock-footage': 'Stock Footage',
-  'multi-panel': 'Multi Panel',
-  'whiteboard-list': 'Whiteboard List',
-  'quote-card': 'Quote Card',
-  'data-visual': 'Data Visual',
+  'contrast': 'Contrast',
   'metaphor-scene': 'Metaphor Scene',
-  'process-flow': 'Process Flow',
-  'pov-scene': 'POV Scene',
-  'cinematic-insert': 'Cinematic Insert',
-  'timeline-progress': 'Timeline Progress',
-  'cross-section': 'Cross Section',
-  'scale-compare': 'Scale Compare',
-  'drawing-live': 'Drawing Live',
-  'transformation': 'Transformation',
+  'typography-hero': 'Typography Hero',
+  'multi-panel': 'Multi Panel',
 };
 
 export const SCENE_MODE_LABELS: Record<SceneMode, string> = {
-  'intro': 'Intro — warm opening, mascot wave/senyum',
-  'hook': 'Hook — mascot point ke kamera, ajakan',
-  'multi-icon': 'Multi Icon — 2-3 ikon bergantian dengan label',
-  'single-icon': 'Single Icon — 1 ikon besar fokus',
-  'comparison': 'Comparison — dua ikon bersebelahan (salah vs benar)',
-  'before-after': 'Before/After — perubahan situasi',
-  'good-bad': 'Good vs Bad — kontras positif/negatif',
-  'duo': 'Duo — dua karakter saling merespon',
-  'vs-group': 'Vs Group — satu karakter vs kelompok',
-  'abstract-diagram': 'Abstract Diagram — ilustrasi/diagram buatan',
-  'real-reference': 'Real Reference — foto real sebagai konteks',
+  'direct': 'Direct — host berbicara langsung ke penonton',
+  'icon-based': 'Icon Based — 1-3 ikon dengan label penjelas',
+  'diagram': 'Diagram — diagram/ilustrasi abstrak sebagai pusat visual',
+  'reference': 'Reference — referensi real/foto sebagai konteks',
+  'before-after': 'Before/After — perubahan situasi dua kondisi',
+  'good-bad': 'Good vs Bad — kontras positif vs negatif',
+  'then-vs-now': 'Then vs Now — kontras masa lalu vs masa kini',
   'single-word': 'Single Word — 1 kata IMPACT besar',
   'definition': 'Definition — kata besar + subtitle penjelas',
-  'nature-calm': 'Nature Calm — pemandangan alam menenangkan',
-  'urban-life': 'Urban Life — hiruk pikuk kota',
-  'clinical-setting': 'Clinical Setting — ruang terapi/klinik',
+  'quote': 'Quote — kutipan dalam kartu elegan',
+  'list': 'List — daftar bullet/numbered/checklist',
+  'statistic': 'Statistic — angka presentase, rasio, atau frekuensi',
+  'big-number': 'Big Number — satu angka IMPACT besar',
+  'bar-chart': 'Bar Chart — perbandingan visual batang/bar',
+  'trend-arrow': 'Trend Arrow — garis tren naik/turun',
+  'map': 'Map — peta geografis atau sebaran data',
+  'living': 'Living — adegan metafora hidup (personifikasi konsep)',
+  'object': 'Object — benda sebagai simbol konsep abstrak',
+  'environment': 'Environment — lanskap/suasana sebagai konsep',
+  'metaphorical-irony': 'Metaphorical Irony — metafora sarkastik/kontras ekspektasi vs realita',
+  'chain-reaction': 'Chain Reaction — efek domino/kausal berantai',
+  'cycle-loop': 'Cycle Loop — siklus berulang, lingkaran setan',
+  'branching': 'Branching — percabangan keputusan/pilihan',
+  'timeline': 'Timeline — garis waktu progresi temporal',
+  'morph': 'Morph — perubahan bentuk gradual/metamorfosis',
+  'first-person': 'First Person — POV dari mata karakter',
+  'dual-pov': 'Dual POV — dua perspektif beda dalam 1 frame',
+  'flashback': 'Flashback — kilas balik masa lalu (efek vintage)',
+  'imagination': 'Imagination — visualisasi "bayangkan jika..."',
+  'reenactment': 'Reenactment — rekonstruksi visual kejadian sejarah',
+  'artifact-focus': 'Artifact Focus — fokus pada benda/artefak bersejarah',
+  'ritual': 'Ritual — penggambaran ritual/upacara kuno',
+  'gross-out': 'Gross Out — visual menjijikkan/bikin geli (busuk, darah, maggot)',
+  'twist-reveal': 'Twist Reveal — plot twist visual, "tapi mereka tetap..."',
+  'ironic-twist': 'Ironic Twist — ironi situasional visual',
+  'anatomy': 'Anatomy — irisan anatomi/organ dalam',
+  'system-inside': 'System Inside — lihat ke dalam suatu sistem/struktur',
+  'layers': 'Layers — lapisan dikupas luar→dalam',
+  'scale': 'Scale — perbandingan besaran/skala',
+  'zoom': 'Zoom — detail kecil yang diperbesar',
   'panel-2': 'Panel 2 — dua panel bersebelahan',
   'panel-3': 'Panel 3 — tiga panel berurutan',
-  'panel-4': 'Panel 4 — empat panel grid',
-  'bullet-points': 'Bullet Points — poin tanpa urutan',
-  'numbered-list': 'Numbered List — langkah berurutan',
-  'checklist': 'Checklist — daftar centang',
-  'expert-quote': 'Expert Quote — kutipan otoritatif',
-  'provocative-quote': 'Provocative Quote — kutipan bikin mikir',
-  'ironic-quote': 'Ironic Quote — kutipan tajam/sarkastik',
-  'big-number': 'Big Number — satu angka IMPACT besar',
-  'bar-comparison': 'Bar Comparison — perbandingan batang',
-  'trend-arrow': 'Trend Arrow — garis tren naik/turun',
-  'living-metaphor': 'Living Metaphor — adegan metafora hidup',
-  'object-metaphor': 'Object Metaphor — benda sebagai simbol',
-  'environment-metaphor': 'Environment Metaphor — lanskap sebagai konsep',
-  'chain-reaction': 'Chain Reaction — efek domino berantai',
-  'cycle-loop': 'Cycle Loop — siklus berulang',
-  'branching-path': 'Branching Path — percabangan keputusan',
-  'first-person': 'First Person — POV dari mata karakter',
-  'dual-pov': 'Dual POV — dua perspektif berbeda',
-  'flashback': 'Flashback — kilas balik masa lalu',
-  'emotional-scene': 'Emotional Scene — adegan emosional seperti film',
-  'social-scene': 'Social Scene — adegan interaksi sosial realistis',
-  'memory-fragment': 'Memory Fragment — cuplikan memori buram/vignette',
-  'horizontal-timeline': 'Horizontal Timeline — garis waktu kiri ke kanan',
-  'evolution-steps': 'Evolution Steps — perubahan bertahap versi 1→2→3',
-  'countdown-progress': 'Countdown Progress — progress bar/hari ke hari',
-  'brain-cutaway': 'Brain Cutaway — irisan otak highlight area',
-  'system-inside': 'System Inside — dalamnya sistem (sosial/rumah sakit)',
-  'layers-reveal': 'Layers Reveal — lapisan dikupas luar→dalam',
-  'size-contrast': 'Size Contrast — perbandingan besaran raksasa vs kecil',
-  'intensity-meter': 'Intensity Meter — meter intensitas ringan→parah',
-  'magnifying-glass': 'Magnifying Glass — zoom detail kecil yang penting',
-  'hand-doodle': 'Hand Doodle — tangan menggambar sketsa di kertas',
-  'ink-flow': 'Ink Flow — tinta mengalir membentuk diagram',
-  'chalk-talk': 'Chalk Talk — kapur di papan muncul sendiri',
-  'morph-transition': 'Morph Transition — transformasi gradual',
-  'break-free': 'Break Free — melepaskan diri dari cangkang/label',
-  'fusion-split': 'Fusion Split — dua hal bergabung atau satu terbelah',
+  'panel-4': 'Panel 4 — empat panel grid 2×2',
 };
 
 export const SCENE_TYPE_FUNCTIONS: Record<SceneType, string> = {
-  'host-direct': '🎤 Hook, transisi, CTA — mascot face kamera, gesture',
-  'icon-explainer': '🎯 Mengajar konsep — mascot + labeled icons posisi presisi',
-  'split-contrast': '⚡ Membandingkan dua sisi — split visual + warna kontras',
-  'scene-interaction': '👥 Menunjukkan relasi — dua karakter berinteraksi',
-  'concept-visual': '🧠 Memvisualisasikan abstrak — diagram + reaction',
-  'typography-hero': '✏️ Menekankan kata kunci — teks besar + mascot reaksi',
-  'stock-footage': '🎬 Video real sebagai background — mood/konteks visual',
-  'multi-panel': '🗂️ Beberapa panel dalam satu frame — perbandingan/step',
-  'whiteboard-list': '📋 Papan tulis dengan bullet points — daftar/checklist',
-  'quote-card': '💬 Quote tokoh dalam kartu elegan — otoritas/inspirasi',
-  'data-visual': '📊 Angka statistik divisualkan — data yang impact',
-  'metaphor-scene': '🎭 Metafora visual hidup — abstrak jadi cerita',
-  'process-flow': '🔄 Alur dinamis — reaksi berantai, siklus, percabangan',
-  'pov-scene': '👁️ Perspektif subjektif — empati dan sudut pandang',
-  'cinematic-insert': '🎬 Adegan film pendek — storytelling emosional tanpa mascot',
-  'timeline-progress': '📅 Perubahan sepanjang waktu — garis visual temporal',
-  'cross-section': '🧬 Potongan melintang — lihat ke dalam otak/sistem',
-  'scale-compare': '📏 Perbandingan besaran — ukuran, intensitas, skala',
-  'drawing-live': '✍️ Menggambar langsung — real-time reveal di frame',
-  'transformation': '🦋 Perubahan bentuk — morph, lepas label, gabung/pecah',
+  'host-direct': '🎤 Host face kamera — hook, transisi, CTA, gesture',
+  'concept-visual': '🎯 Visualisasi konsep — ikon, diagram, atau referensi sebagai pusat penjelasan',
+  'contrast': '⚡ Membandingkan dua sisi — waktu, kondisi, atau perspektif berbeda',
+  'typography-hero': '✏️ Teks sebagai hero — kata kunci, definisi, quote, list, atau statistik',
+  'data-visual': '📊 Data & angka divisualkan — chart, peta, angka IMPACT',
+  'metaphor-scene': '🎭 Metafora visual hidup — abstrak jadi cerita yang bisa dilihat',
+  'process-flow': '🔄 Alur dinamis — reaksi berantai, siklus, timeline, metamorfosis',
+  'pov-shot': '👁️ Perspektif subjektif — POV karakter, imajinasi, flashback',
+  'historical-vignette': '📜 Rekonstruksi sejarah — ritual, artefak, atau momen kuno',
+  'shock-reveal': '💥 Momen kejutan — gross-out, plot twist, ironi situasional',
+  'cross-section': '🧬 Lihat ke dalam — anatomi, lapisan, skala, detail terkecil',
+  'multi-panel': '🗂️ Multi panel dalam satu frame — komik strip, perbandingan, step',
 };
 
 export interface StoryFrame {
   id: string;
-  format: string; // Always "Single Panel" in new system; kept for backward compat
   sceneType: SceneType;
   sceneMode: SceneMode;
   visualPrompt: string;
@@ -279,11 +153,13 @@ export interface AppState {
   analysisError?: string;
   narratorName: string;
   narratorSuffix: string;
-  stylePreset: 'Ilmu Lidi' | 'ILMU SURVIVAL' | 'ILMU NYANTUY' | 'Ilmu Mental' | 'Custom';
+  stylePreset: 'Ilmu Lidi' | 'ILMU SURVIVAL' | 'ILMU NYANTUY' | 'Ilmu Mental' | 'Ancient Sketch' | 'Custom';
   styleSuffix: string;
   easterEggCount: number;
   easterEggTypes: string[];
   negativePrompt: string;
+  visualReference: string;
+  enforceObserver: boolean;
   language: 'id' | 'en';
   geminiApiKey: string;
   isDetectingCharacters: boolean;
@@ -292,7 +168,7 @@ export interface AppState {
   ttsModel: string;
   ttsVoice: string;
   ttsCopies: number;
-  ttsPreset: 'Ilmu Lidi' | 'Ilmu Survival' | 'Norman' | 'Ilmu Nyantuy' | 'Ilmu Mental' | 'Custom';
+  ttsPreset: 'Ilmu Lidi' | 'Ilmu Survival' | 'Norman' | 'Ilmu Nyantuy' | 'Ilmu Mental' | 'Ancient Sketch' | 'Custom';
   ttsCustomInstruction: string;
 }
 
@@ -304,6 +180,8 @@ export const ILMU_SURVIVAL_STYLE = "Gritty brush-and-ink noir illustration, raw 
 
 export const ILMU_NYANTUY_STYLE = "Ultra-minimalist 2D cartoon style, crude MS Paint aesthetic, basic flat colors, unpolished rough outlines, intentionally simple drawing, humorous deadpan tone, solid white background, low-effort high-comedy internet meme vibe, lo-fi digital art.";
 
+export const ANCIENT_SKETCH_STYLE = "Minimalist vector art style. Stick figure characters with oversized round heads and thin stick bodies. Thin clean black outlines. Highly expressive cartoon faces. Flat muted color palette. Simple background with depth layers. No shading. Clean white or warm flat background.";
+
 export const DEFAULT_SYSTEM_PROMPT = `Peran Utama: Anda adalah Asisten AI Kreatif, Creative Director, dan Storyboard Artist Profesional untuk kanal YouTube "{{NARRATOR_NAME}}".
 
 Tugas Inti: Tugas utama Anda adalah menganalisis naskah narasi, memecahnya menjadi urutan adegan (storyboard) yang sesuai aturan, dan mengubahnya menjadi prompt gambar (image prompt) dalam Bahasa Indonesia yang berorientasi Internasional.
@@ -313,7 +191,7 @@ Setiap scene = 1 frame dengan format "Single Panel". Tidak ada Multi Panel atau 
 
 A. OPTIMASI RETENSI VIDEO (CREATIVE & DYNAMIC VISUALS):
 Untuk mempertahankan retensi penonton, prompt visual HARUS mengaplikasikan 4 elemen ini:
-1. Sudut Kamera Dinamis: Gunakan extreme low angle, dutch angle, over-the-shoulder, bird-eye view, atau foreshortening dramatis.
+1. Sudut Kamera Dinamis: Pilih sudut kamera yang paling tepat untuk scene type. Jangan default ke "dutch angle" atau "low angle" untuk semua scene. Variasikan sesuai mood scene.
 2. Ekspresi Ekstrim: Karakter WAJIB memiliki ekspresi wajah berlebihan (misal: syok berat, menangis bombay, tertawa jahat ala anime).
 3. Aksi & Gerakan Dinamis: Tambahkan motion blur, action lines, atau pose tubuh hiper-dinamis (seolah-olah sedang bergerak cepat).
 4. Pencahayaan & Efek Dramatis: Tambahkan efek lighting dramatis (deep shadows, rim light) atau VFX komedik (titik keringat anime raksasa, impact frames, aura api).

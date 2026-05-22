@@ -14,65 +14,106 @@ const getClient = (manualApiKey?: string) => {
 // NEW STYLE SUFFIX V2.16 - Updated per user request
 const STYLE_SUFFIX = "Modern 2D webcomic style, pastel color background, bold clean line art, stylized character design, flat colors with cel-shading, cinematic dramatic lighting, volumetric atmosphere, rim lighting, deep shadows, ambient occlusion, depth of field, sharp focus on subject, 8k resolution, high quality digital illustration.";
 
-// Scene Type composition rules — appended to visual prompts per frame's sceneType
-const SCENE_TYPE_COMPOSITION: Record<string, string> = {
-  'host-direct':
-    "Composition: Host/mascot faces camera directly, occupying 50-60% of frame. Direct eye contact. One hand gesturing naturally. Minimal background. Focus on character's expression and connection with viewer. Text overlays appear as floating labels.",
-  'icon-explainer':
-    "Composition: Abstract symbolic icon/illustration is the main subject (50% of frame). Character stands beside icons, pointing or explaining. Icons have clean labels underneath. Minimal background. Sequential appearance of icons creates learning flow.",
-  'split-contrast':
-    "Composition: Clear visual split in the frame — could be left/right, top/bottom, or diagonal. Two contrasting elements side by side (e.g., before/after, good vs bad, calm vs chaos). Characters interact with each side. Use strong color/value contrast. A dividing line or gradient separates the two halves.",
-  'scene-interaction':
-    "Composition: Two or more characters interact within the frame. Equal emphasis (50-50) for duo mode. Main character faces group for vs-group mode. Use over-the-shoulder or wide shot. Body language and spatial relationship tell the story. Background context minimal.",
-  'concept-visual':
-    "Composition: A concept, diagram, or abstract illustration fills 60-70% of frame. Character is positioned to one side (max 25%) observing or reacting to the visual concept. Use flowing lines, arrows, connected nodes, or layered elements to explain the abstract idea visually.",
-  'typography-hero':
-    "Composition: Large bold text is the primary visual element, occupying 50-60% of frame center. Character is present in a corner (max 20% of frame) reacting to or presenting the text. Background is minimal or empty. Text has dramatic entrance animation implied.",
-  'stock-footage':
-    "Composition: Realistic photo or video-style background fills the entire frame (atmospheric setting). Character appears as overlay in bottom corner or side (max 20% of frame) as observer. The background sets the emotional tone — nature for calm, city for stress, clinical for therapy. High contrast between realistic bg and cartoon character.",
-  'multi-panel':
-    "Composition: Frame is divided into 2, 3, or 4 equal panel sections (like a comic strip). Each panel contains its own self-contained scene. Panels are read left-to-right or top-to-bottom. Thin borders separate panels. Character appears in one or more panels consistently. Minimal backgrounds per panel to avoid clutter.",
-  'whiteboard-list':
-    "Composition: A large whiteboard or chalkboard fills 60-70% of the frame with handwritten-style text and bullet points. Character stands beside the board holding a marker or pointer, facing toward the board or slightly toward camera. The list items are clearly readable. Simple visual icons may accompany each bullet point.",
-  'quote-card':
-    "Composition: A stylized card or banner in the center of frame containing a quote in elegant typography. The quote text is the hero. Character appears in lower corner or behind the card (max 20% of frame) in a contemplative pose. Attribution line at bottom of quote. Subtle decorative elements like quotation marks or line accents.",
-  'data-visual':
-    "Composition: A large numerical statistic, chart, or graph fills the center 60% of frame. Numbers are bold and oversized. Simple chart elements (bars, lines, or pie segments) in clean flat design. Character stands beside the data, pointing or reacting with surprise/emphasis. Minimal background to keep focus on the number.",
-  'metaphor-scene':
-    "Composition: A visually rich metaphorical scene fills the entire frame. The metaphor is shown as a literal scene (e.g., a person carrying a heavy backpack for 'emotional burden'). Character is integrated INTO the metaphor, not observing it. The scene should be immediately readable as symbolic. Use lighting and color to enhance the metaphorical mood. Think Pixar's 'Abstract Thought' sequence — abstract concepts made tangible through imaginative visuals.",
-  'process-flow':
-    "Composition: A dynamic flow diagram showing sequential stages connected by arrows, lines, or cascading elements. Stages flow left-to-right or top-to-bottom with clear progression markers (numbers, dots, or arrowheads). Character stands beside the flow, pointing to a specific stage or reacting to the overall process. Each stage has a small label or icon. Use motion lines or gradient flows between stages.",
-  'pov-scene':
-    "Composition: First-person or subjective perspective — camera shows what the character sees through their eyes. Hands/body parts of the POV character visible at frame edges for grounding. Character's reflection in mirror or window can establish who they are. Deep depth of field for emotional immersion. Use color grading to reflect emotional state (warm for comfort, cold for anxiety).",
-  'cinematic-insert':
-    "Composition: A short dramatic vignette like a movie scene — no mascot, no narrator character. The scene itself tells a story through pure visual storytelling. Use realistic lighting, deep shadows, and cinematic framing (wide shot for isolation, close-up for emotion). Color grading sets the mood: warm sepia for nostalgia, cold blue for sadness, desaturated for trauma. No text overlays. No explanatory elements. Just pure emotional scene.",
-  'timeline-progress':
-    "Composition: A horizontal or vertical timeline dominates the frame, showing progression through time. Key milestone markers connected by a continuous line or path. The character is positioned at one end of the timeline, either looking back at the past or forward toward the future. Each milestone has a small icon and date/label. Use fading/grayscale for past events, bright colors for present/future. Arrowhead at the end of the line indicates direction of time.",
-  'cross-section':
-    "Composition: A cutaway or cross-section view of an object, body part, or system fills 70% of frame. The outer shell is peeled away to reveal internal structures. Character stands beside or below the cross-section (max 20% of frame) pointing or reacting. Internal elements are clearly labeled with thin callout lines. Use translucent layering effect — outer layer semi-transparent, inner layers fully opaque and brightly colored for emphasis.",
-  'scale-compare':
-    "Composition: Two or more objects/people of drastically different sizes occupy the frame to show magnitude comparison. The larger element looms in background or one side, the smaller element in foreground or opposite side. Character can be the scale reference (small) facing a giant version of the same concept. Use forced perspective, wide-angle lens effect, or stacked visual hierarchy. Size difference should be instantly readable — no subtlety.",
-  'drawing-live':
-    "Composition: A hand (visible at frame edge, holding a marker/pen/chalk) actively draws on a blank surface that fills 60-70% of frame. The drawing is partially complete — some lines done, some still being sketched. The hand is the only character element. Character (narrator) watches from one side (max 15% of frame) with engaged expression. Sketchy, rough lines gradually revealing the concept. Small eraser marks or dust particles add realism.",
-  'transformation':
-    "Composition: The same subject is shown in TWO states within one frame — BEFORE on one side (fading, grayscale, cracked) transitioning into AFTER on the other side (vibrant, complete, glowing). The transition zone between them shows the morphing process: particles, cracks, light beams, or liquid flow bridging the two states. Character appears in one state, or as a silhouette in the transition zone. Think caterpillar-to-butterfly visual language.",
+
+
+// Scene Type composition rules — appended to visual prompts per frame's sceneType (bilingual 5-field)
+const SCENE_TYPE_COMPOSITION: Record<string, string> = {};
+
+// Build scene type composition guide as bilingual template literal
+const buildSceneTypeComposition = (language: 'id' | 'en'): string => {
+  return language === 'id'
+    ? `T2I COMPOSITION TEMPLATE PER TYPE — Gunakan ini untuk menentukan komposisi visual:
+
+GLOBAL RULE → JANGAN menyebut background, latar, lokasi, atau tempat apapun. Background ditangani oleh master prompt terpisah. Fokus HANYA pada: karakter, aksi, ekspresi, gestur, komposisi, layout frame.
+NO TEXT RULE → KECUALI typography-hero, JANGAN PERNAH menyebut teks, tulisan, huruf, kata, label, atau konten tertulis apapun di dalam prompt. Gambar final HARUS BEBAS dari teks. Ini aturan paling keras.
+
+--- host-direct ---
+COMPOSITION → Host menghadap kamera langsung, mengisi 50-60% frame. Satu tangan gestur alami. Fokus pada ekspresi dan kontak mata.
+FOCUS → Ekspresi wajah host dan kontak mata. Gestur tangan yang komunikatif.
+LAYOUT → Center-frame. Host di tengah, ruang kosong di sekitar untuk subtitle editor.
+NO TEXT → Tidak ada teks apapun di gambar. Subtitles ditambahkan saat editing video.
+EXAMPLE → [subjek] menghadap kamera, ekspresi [ekspresi], tangan [gestur], [teks] melayang di atas.
+FORBIDDEN → Adegan dari belakang/samping. Host tidak menghadap kamera. Adegan tanpa karakter.
+
+--- contrast ---
+COMPOSITION → Dua sisi kontras dalam satu frame — kiri/kanan, atas/bawah, atau diagonal. Split pemisah tegas.
+FOCUS → Perbedaan antara dua keadaan. Setiap sisi treatment warna berbeda (sepia vs vibrant).
+LAYOUT → Split-frame. Dua sisi dengan garis/transisi pemisah di tengah.
+EXAMPLE → [Kiri: keadaan A] [subjek] [ekspresi]. [Kanan: keadaan B] [subjek] [ekspresi]. [elemen pemisah] di tengah.
+FORBIDDEN → Satu adegan utuh tanpa perbandingan. Dua sisi identik. Tanpa indikator kontras.
+
+--- metaphor-scene ---
+COMPOSITION → Adegan metafora VISUAL penuh — karakter ADA DI DALAM dunia metafora. Seluruh frame adalah metafora.
+FOCUS → Konsep abstrak dibuat tangible secara visual.
+LAYOUT → Full-scene. Karakter terintegrasi dalam lingkungan metafora. Tidak ada split.
+EXAMPLE → [subjek] [tindakan metaforis], [ekspresi], [elemen simbolik] mengelilingi. Suasana [suasana] mendukung metafora.
+FORBIDDEN → Metafora dijelaskan dengan teks. Karakter menunjuk metafora dari luar. Gaya literal tanpa simbolisme.
+
+--- typography-hero ---
+COMPOSITION → Teks/angka sebagai hero visual di tengah 50-60% frame. Karakter di pojok (max 20%) bereaksi.
+FOCUS → Satu kata/frase/angka BESAR sebagai pusat. Font bold, ukuran dominan.
+LAYOUT → Center-text. Teks besar di tengah, karakter kecil di sudut (bawah kiri/kanan).
+EXAMPLE → Teks "[kata/frase]" ukuran besar di tengah frame, font bold, [subjek] di pojok, wajah [ekspresi].
+FORBIDDEN → Adegan aksi. Banyak objek. Karakter sebagai fokus utama. Tanpa teks hero.
+
+--- multi-panel ---
+COMPOSITION → Frame terbagi jadi 2 atau 3 panel komik. Masing-masing panel punya adegan sendiri.
+FOCUS → Beberapa kejadian/sudut pandang dalam satu frame. Progresi visual antar panel.
+LAYOUT → Grid-panels. Panel horizontal (2-3) dengan border tipis. Baca kiri-ke-kanan.
+EXAMPLE → [Panel 1: adegan awal] [subjek] [aksi]. [Panel 2: konflik] [subjek] [aksi]. [Panel 3: hasil] [resolusi]. Border tipis antar panel.
+FORBIDDEN → Satu adegan tanpa panel. Panel tak seimbang. Terlalu banyak teks per panel.`
+    : `T2I COMPOSITION TEMPLATE PER TYPE — Use this to determine visual composition:
+
+GLOBAL RULE → NEVER mention background, setting, location, or place. Background is handled by a separate master prompt. Focus ONLY on: character, action, expression, gesture, composition, frame layout.
+NO TEXT RULE → EXCEPT for typography-hero, NEVER mention text, words, letters, labels, or any written content in the prompt. The final image MUST BE FREE of readable text. This is the hardest rule.
+
+--- host-direct ---
+COMPOSITION → Host faces camera directly, occupying 50-60% of frame. One hand gesturing naturally. Focus on expression and eye contact.
+FOCUS → Host's facial expression and eye contact. Communicative hand gestures.
+LAYOUT → Center-frame. Host in center, empty space around for subtitle editor.
+NO TEXT → No text in image. Subtitles added in video editing.
+EXAMPLE → [subject] faces camera, [expression], hand [gesture], [text] floating above.
+FORBIDDEN → Back/side view of host. Host not facing camera. Scene without character.
+
+--- contrast ---
+COMPOSITION → Two contrasting sides in one frame — left/right, top/bottom, or diagonal. Strong split/divider.
+FOCUS → The difference between two states. Different color treatment per side (sepia vs vibrant).
+LAYOUT → Split-frame. Two sides with dividing line/transition in middle.
+EXAMPLE → [Left: state A] [subject] [expression]. [Right: state B] [subject] [expression]. [divider element] in center.
+FORBIDDEN → Single whole scene without comparison. Two identical sides. No contrast indicator.
+
+--- metaphor-scene ---
+COMPOSITION → Full VISUAL metaphor scene — character IS INSIDE the metaphor world. Entire frame is the metaphor.
+FOCUS → Making abstract concepts tangibly visual.
+LAYOUT → Full-scene. Character integrated within the metaphor environment. No splits.
+EXAMPLE → [subject] [metaphoric action], [expression], [symbolic elements] surrounding them. [mood] atmosphere supporting the metaphor.
+FORBIDDEN → Metaphor explained with text. Character pointing at metaphor from outside. Literal style without symbolism.
+
+--- typography-hero ---
+COMPOSITION → Text/number as visual hero in center 50-60% of frame. Character in corner (max 20%) reacting.
+FOCUS → One BIG word/phrase/number as centerpiece. Bold font, dominant size.
+LAYOUT → Center-text. Large text in center, small character in corner (bottom left/right).
+EXAMPLE → "[word/phrase]" text large in center of frame, bold font, [subject] in corner, face [expression].
+FORBIDDEN → Action scene. Many objects. Character as main focus. No hero text.
+
+--- multi-panel ---
+COMPOSITION → Frame split into 2 or 3 comic panels. Each panel has its own scene.
+FOCUS → Multiple events/viewpoints in one frame. Visual progression across panels.
+LAYOUT → Grid-panels. Horizontal panels (2-3) thin borders. Read left-to-right.
+EXAMPLE → [Panel 1: opening scene] [subject] [action]. [Panel 2: conflict] [subject] [action]. [Panel 3: result] [resolution]. Thin borders.
+FORBIDDEN → Single scene without panels. Unbalanced panels. Too much text per panel.`
 };
 
 // Style prefixes — prepended to the visual prompt to signal visual language without changing the preset
-// Only 2 styles: 2D (for illustrative/mascot scenes) and REALISTIC (for photo-like scenes)
+// Removed stock-footage, drawing-live, whiteboard-list — consolidated into other types
 const SCENE_STYLE_PREFIX: Record<string, string> = {
-  'stock-footage': '[STYLE: REALISTIC] ',
-  'cinematic-insert': '[STYLE: REALISTIC] ',
-  'drawing-live': '[STYLE: 2D] ',
-  'cross-section': '[STYLE: 2D] ',
-  'data-visual': '[STYLE: 2D] ',
   'multi-panel': '[STYLE: 2D] ',
-  'whiteboard-list': '[STYLE: 2D] ',
 };
 
-// Helper: Get composition rule for a scene type
+// Helper: Get composition rule for a scene type (now uses buildSceneTypeComposition)
+// Note: This function is kept for backward compatibility. Use buildSceneTypeComposition directly.
 const getSceneTypeComposition = (sceneType: string): string => {
-  return SCENE_TYPE_COMPOSITION[sceneType] || SCENE_TYPE_COMPOSITION['host-direct'];
+  return ''; // Composition is now provided via buildSceneTypeComposition per language
 };
 
 // Helper: Process System Instruction Placeholders
@@ -151,7 +192,32 @@ const cleanJsonString = (input: string): string => {
         text = text.substring(start, end + 1);
     }
     
+    // 3. Repair common JSON errors (Gemini without responseSchema)
+    // Remove trailing commas before } or ]
+    text = text.replace(/,(\s*[}\]])/g, '$1');
+    // Fix unquoted property names (word: → "word":)
+    text = text.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    // Replace smart/curly quotes with straight quotes
+    text = text.replace(/[\u201C\u201D]/g, '"');
+    // Remove // comments
+    text = text.replace(/\/\/.*$/gm, '');
+    
     return text.trim();
+};
+
+// Helper: Parse JSON with repair fallback
+const safeJsonParse = (text: string): any => {
+    try {
+        return JSON.parse(text);
+    } catch (firstError: any) {
+        // Attempt repair: escape unescaped newlines inside string values
+        try {
+            const repaired = text.replace(/(?<=: ")([^"]*?)\n([^"]*?)(?=")/g, '\\n');
+            return JSON.parse(repaired);
+        } catch (secondError: any) {
+            throw new Error(`JSON parse failed. Position ${firstError.message.match(/position (\d+)/)?.[1] || '?'}: ${firstError.message}. Raw (200 chars): ${text.slice(0, 200)}`);
+        }
+    }
 };
 
 // Helper: Escape Regex
@@ -283,13 +349,118 @@ export const analyzeNarrativeToScenes = async (
   easterEggTypes: string[] = ["pop culture"],
   negativePrompt: string = "",
   language: 'id' | 'en' = 'id',
-  manualApiKey?: string
+  manualApiKey?: string,
+  enforceObserver: boolean = true
 ): Promise<StoryScene[]> => {
   const ai = getClient(manualApiKey);
   
   // Process placeholders in system instruction
   const finalSystemInstruction = processSystemInstruction(systemInstruction, narratorName, styleSuffix, easterEggCount, easterEggTypes, negativePrompt, language);
   
+  // Bilingual scene type decision guide
+  const sceneTypeGuide = language === 'id' ? `PANDUAN SCENE TYPE — Pilih berdasarkan FUNGSI NARASI adegan ini:
+
+═══════════════════════════════════════════════════════
+🔴 ATURAN UTAMA — HARAM MELANGGAR:
+1. DUA ADEGAN BERTURUT-TURUT TIDAK BOLEH SAMA SCENE TYPE-nya.
+   Jika scene N adalah "host-direct", scene N+1 HARUS beda tipe.
+2. GUNAKAN SEMUA 5 SCENE TYPES dalam satu storyboard.
+   Variasi visual adalah kunci retensi penonton.
+3. Setiap scene harus punya IDENTITAS VISUAL UNIK.
+   Jangan ulangi komposisi yang sama.
+═══════════════════════════════════════════════════════
+
+TIPS VARIASI:
+- "capek banget" → metaphor-scene (visualisasi kelelahan)
+- "Dan tau nggak?" → host-direct (retoris pendek, langsung ke penonton)
+- "dulu vs sekarang" → contrast (split-frame perbandingan)
+- "istilah penting" → typography-hero (teks/angka sebagai hero)
+- "3 langkah" → multi-panel (urutan dalam panel komik)
+
+host-direct:
+  KAPAN → Host bicara LANGSUNG ke kamera: pembuka, CTA penutup, bridging topik, pertanyaan retoris, interaksi langsung dengan penonton
+  JANGAN → Adegan menjelaskan konsep tanpa interaksi host; voice-over naratif tanpa host di layar
+  KARAKTER → WAJIB ${narratorName} (host). TIDAK BOLEH karakter lain.
+  VIBE → Tatap kamera, gestur tangan ekspresif dan dinamis, seolah bicara ke penonton dengan energi. BUKAN pasif atau statis.
+  ALTERNATIF → contrast, metaphor-scene, typography-hero
+
+contrast:
+  KAPAN → Membandingkan DUA SISI: dulu vs sekarang, baik vs buruk, mitos vs fakta, ironi, paradoks, ekspektasi vs realita
+  JANGAN → Urutan langkah/sequence (pakai multi-panel); metafora abstrak (metaphor-scene)
+  KARAKTER → DUA karakter BERBEDA — ${narratorName} di satu sisi, figuran (atau objek) di sisi lain. JANGAN ${narratorName} di kedua sisi.
+  VIBE → Dua keadaan berdampingan. Split-frame atau transisi. Dramatisasi perbedaan. Hitam-putih vs warna.
+  ALTERNATIF → host-direct, metaphor-scene, multi-panel
+
+metaphor-scene:
+  KAPAN → Analogi MENDALAM, konsep abstrak DIVISUALISASIKAN secara surealis/kiasan: "beban pikiran seperti gunung", "kebohongan seperti jaring laba-laba"
+  JANGAN → Penjelasan literal; adegan realitas sehari-hari tanpa simbolisme; teks sebagai hero (typography-hero)
+  KARAKTER → FIGURAN atau OBJEK simbolik. JANGAN ${narratorName}. Objek tanpa karakter lebih bagus (bola rantai, jam pasir retak, sangkar kosong).
+  VIBE → Karakter di DALAM dunia metafora. Surealis, simbolik, imajinatif, seperti Pixar.
+  ALTERNATIF → host-direct, contrast, multi-panel
+
+typography-hero:
+  KAPAN → Kata kunci, definisi, kutipan, angka penting sebagai HERO visual utama — bikin penonton INGAT
+  JANGAN → Adegan yang butuh aksi atau narasi bergerak; konten yang lebih efektif jika dijelaskan secara visual
+  KARAKTER → TANPA KARAKTER APAPUN. Hanya teks/angka sebagai hero visual. Ini HARD RULE — tidak boleh ada karakter.
+  VIBE → Teks/angka BESAR mendominasi frame. Bold, minimalis, berani. Satu kata/frase/angka sebagai pusat perhatian.
+  ALTERNATIF → host-direct, contrast, multi-panel
+
+multi-panel:
+  KAPAN → BEBERAPA PANEL (2-3) dalam SATU frame: urutan langkah, kronologi, adegan paralel, sequence events
+  JANGAN → Satu momen saja yang cukup dengan satu scene type; terlalu banyak teks per panel
+  KARAKTER → Campur bebas antar panel. Jangan semua panel karakter sama. Variasikan ${narratorName} + figuran + objek.
+  VIBE → Gaya komik strip. Beberapa kejadian simultan dalam satu frame. Grid, komparasi.
+  ALTERNATIF → contrast, metaphor-scene, host-direct
+` : `SCENE TYPE GUIDE — Pick based on NARRATIVE FUNCTION:
+
+═══════════════════════════════════════════════════════
+🔴 HARD RULES — MUST FOLLOW:
+1. NO TWO CONSECUTIVE SCENES may have the same sceneType.
+   If scene N is "host-direct", scene N+1 MUST be different.
+2. USE ALL 5 SCENE TYPES across the storyboard.
+   Visual variety is key to viewer retention.
+3. Each scene must have a VISUALLY UNIQUE IDENTITY.
+   Don't repeat the same composition.
+═══════════════════════════════════════════════════════
+
+host-direct:
+  WHEN → Host speaks DIRECTLY to camera: opening hook, closing CTA, topic transition, rhetorical question, direct viewer engagement
+  NOT when → Scene explaining a concept without host interaction; voice-over narration without host on screen
+  CHARACTER → MUST use ${narratorName} (host). NO other characters allowed.
+  VIBE → Eye contact with camera, natural gestures. Warm, personal, engaging.
+  ALTERNATIVE → contrast, metaphor-scene, typography-hero
+
+contrast:
+  WHEN → Comparing TWO SIDES: past vs present, good vs bad, myth vs fact, irony, paradox, expectation vs reality
+  NOT when → Steps/sequence (use multi-panel); abstract metaphor (metaphor-scene)
+  CHARACTER → TWO DIFFERENT characters — ${narratorName} on one side, supporting character (or object) on the other. Do NOT use ${narratorName} on both sides.
+  VIBE → Two states side by side. Split-frame or transition. Dramatization of difference. B&W vs color.
+  ALTERNATIVE → host-direct, metaphor-scene, multi-panel
+
+metaphor-scene:
+  WHEN → Deep ANALOGY, abstract concept VISUALIZED surrealistically/figuratively: "mental burden as a mountain", "lies as a spider web"
+  NOT when → Literal explanation; everyday reality without symbolism; text as hero (typography-hero)
+  CHARACTER → SUPPORTING character or symbolic OBJECT. Do NOT use ${narratorName}. Object-only is great (chain ball, cracked hourglass, empty cage).
+  VIBE → Character INSIDE the metaphor world. Surreal, symbolic, imaginative, Pixar-style.
+  ALTERNATIVE → host-direct, contrast, multi-panel
+
+typography-hero:
+  WHEN → Key word, definition, quote, important number as visual HERO — makes viewers REMEMBER
+  NOT when → Scenes needing action or narrative movement; content better explained visually
+  CHARACTER → NO CHARACTER AT ALL. Only text/number as visual hero. This is a HARD RULE.
+  VIBE → BIG text/number dominates frame. Bold, minimal, striking. One word/phrase/number as focal point.
+  ALTERNATIVE → host-direct, contrast, multi-panel
+
+multi-panel:
+  WHEN → Multiple PANELS (2-3) in ONE frame: steps, chronology, parallel scenes, sequence events
+  NOT when → Single moment that one scene type can handle; too much text per panel
+  CHARACTER → Mix freely across panels. Don't use the same character in all panels. Vary ${narratorName} + supporting + objects.
+  VIBE → Comic strip style. Multiple simultaneous events in one frame. Grid, comparison.
+  ALTERNATIVE → contrast, metaphor-scene, host-direct
+`;
+  // Bilingual T2I composition template per scene type
+  const sceneTypeComposition = buildSceneTypeComposition(language);
+
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
@@ -307,38 +478,17 @@ export const analyzeNarrativeToScenes = async (
                 type: Type.OBJECT,
                 properties: {
                     visualPrompt: { type: Type.STRING, description: `Detailed prompt in ${language === 'en' ? 'ENGLISH' : 'INDONESIAN'} (International Context). Must start with '[INDOOR/OUTDOOR] - [Location Name]'. Must include 'easter_egg' as per instructions.` },
-                    format: { type: Type.STRING, description: "Format: 'Single Panel', 'Multi Panel (2)', 'Multi Panel (3)', or 'Sequence'. RULE: If 'splitText' array has more than 1 item, Format CANNOT be 'Single Panel'." },
                     splitText: { 
                         type: Type.ARRAY, 
                         items: { type: Type.STRING },
-                        description: "The narrative text split into segments. If Single Panel, array MUST have 1 item. If Multi Panel, split by conjunctions. If Sequence, split by events."
+                        description: "Each item = 2-20 words chunk for timing/text overlay. Each scene = 1 frame."
                     },
                     sceneType: { type: Type.STRING, description: `Scene type for this frame. CRITICAL: Choose based on NARRATIVE FUNCTION of this scene, not arbitrarily.
 
-MAPPING — Pick the BEST match for what this scene DOES:
-- host-direct: Mascot speaks DIRECTLY to camera. Use for: opening hook, closing CTA, direct address, transition between topics, rhetorical question ("Lo tahu nggak sih..."). Mascot engages viewer.
-- icon-explainer: Narasi menjelaskan KONSEP dengan contoh konkret. Use for: introducing specific terms, defining ideas, listing categories. Mascot stands beside labeled icons/objects.
-- split-contrast: Membandingkan DUA SISI — good vs bad, dulu vs sekarang, mitos vs fakta. Use for: contrast, irony, "sisi gelap vs sisi terang", paradox.
-- scene-interaction: Two or more characters interacting. Use for: dialogue between personas, social dynamics, internal conflict visualized as two characters arguing.
-- concept-visual: Abstract concept that needs visual metaphor (diagram, brain, mind map). USE SPARINGLY — only when idea is purely abstract and no other type fits better.
-- typography-hero: One key word/phrase lands with IMPACT. Use for: punchline, thesis statement, emphasis, climax ("SEMUA INI... PALSU"), big reveal.
-- stock-footage: Setting the MOOD with a realistic scene. Use for: establishing shots (city street, therapy room), environmental context, "imagine this...".
-- multi-panel: Showing BEFORE/AFTER or multiple STEPS in one frame. Use for: process comparison, "dulu vs sekarang" as comic panels.
-- whiteboard-list: Listing items, steps, or facts. Use for: "there are X reasons why...", numbered causes, checklist of symptoms.
-- quote-card: Notable STATEMENT presented as a card. Use for: expert quote, provocative statement, core thesis in a box.
-- data-visual: STATISTIC or NUMBER that surprises. Use for: "X% of people...", shocking facts, comparisons of scale.
-- metaphor-scene: Elaborate VISUAL METAPHOR where mascot is INSIDE the metaphor world. Use for: deep analogies, emotional states visualized as physical spaces.
-- process-flow: Sequential FLOW or cycle. Use for: cause-and-effect chains, feedback loops, step-by-step progression.
-- pov-scene: Audience sees from character's EYES. Use for: immersive moments, first-person experience, emotional flashback.
-- cinematic-insert: Movie-like vignette WITHOUT mascot. Use for: pure storytelling moment, historical scene, flashback without narrator. NO mascot in frame.
-- timeline-progress: Changes over TIME. Use for: evolution, journey, "X years later", progress bars.
-- cross-section: Looking INSIDE something. Use for: brain cutaway, system anatomy, peeling layers.
-- scale-compare: Size COMPARISON — tiny vs giant. Use for: magnitude emphasis, "just how big/small is this".
-- drawing-live: Hand is DRAWING on a board. Use for: reveal-as-you-explain, sketch note style, chalk-talk.
-- transformation: BEFORE → AFTER change. Use for: personal growth, habit change, metamorphosis.` },
+${sceneTypeGuide}` },
                     sceneMode: { type: Type.STRING, description: "Mode for the chosen sceneType, auto-detected from narrative." }
                 },
-                required: ["visualPrompt", "format", "splitText", "sceneType", "sceneMode"]
+                required: ["visualPrompt", "splitText", "sceneType", "sceneMode"]
               }
             }
           },
@@ -376,56 +526,24 @@ MAPPING — Pick the BEST match for what this scene DOES:
       Scene 1: "Tanda #2: Tega Menolak Teman."
       Scene 2: "Nah, kita masuk ke..."
 
-    CRITICAL RULE 1: Split every sentence (ending with '.', '?', or '!') into a separate SCENE.
-    
-    CRITICAL RULE 2 (FORMAT & SPLITTING LOGIC):
-    For each sentence, you MUST decide if it needs to be split (Multi Panel/Sequence) or kept as Single Panel.
+    CRITICAL RULE 1: Group short consecutive sentences into SCENES of 3-15 words each. Do NOT split every sentence into its own scene — that creates too many tiny scenes. And do NOT group too many sentences — scenes should be digestible 3-15 word chunks. If multiple short sentences together form a coherent visual idea and stay within 3-15 words, combine them into one scene. Example: "Open your fridge. Go on. Take a look." (8 words total) → ONE scene. "A carton of milk. Some cheese. Maybe that leftover pizza." (11 words) → ONE scene. But "A carton of milk. Some cheese. Maybe that leftover pizza. None of it is old. None of it has expired." (18 words) → must be split into two scenes.
 
-    STEP A: CHECK FOR MULTI PANEL TRIGGERS ("ATAU", "DAN", "BUKAN... BUKAN... BUKAN")
-    
-    1. "TRIAD / TRIPLET NEGATION" (3 PARALLEL ITEMS) - V2.10
-       - Trigger: A list of 3 distinct items, often with repetition like "Bukan A, bukan B, dan bukan C".
-       - Example: "Kadang bukan inflasi, bukan harga beras naik, dan bukan juga kebijakan pemerintah."
-       - Action: Split text into 3 parts.
-       - FORMAT MUST BE: "Multi Panel (3)".
-       - SPLIT: [Part 1, Part 2, Part 3]
-
-    2. "ATAU" (Choice/Contrast):
-       - Trigger: "Angkanya bikin hati TENANG, atau malah bikin pengen banting HP ke tembok?" 
-       - Action: Split text into 2 parts. 
-       - FORMAT MUST BE: "Multi Panel (2)".
-    
-    3. "DAN" (Distinct Parallel Ideas):
-       - Trigger: "Kami gak nawarin koin micin, dan jelas gak nawarin pesugihan."
-       - Action: Split text into 2 parts.
-       - FORMAT MUST BE: "Multi Panel (2)".
-
-    STEP B: CHECK FOR SEQUENCE TRIGGERS (AGGRESSIVE PACING RULE V2.8)
-    1. Temporal Words: "Lalu", "Terus", "Kemudian".
-    2. **AGGRESSIVE COMMA SPLITTING (V2.8):**
-       - RULE: If a sentence is LONG (> 12 words) and contains an intermediate comma (","), you MUST split it into a "Sequence".
-       - RATIONALE: Long sentences with pauses need visual pacing steps. Do NOT keep them as Single Panel.
-       - Trigger Examples:
-         - "Tapi kalau kamu punya tanda nomor tiga ini, sensasi belanja itu mendadak HILANG." -> SPLIT at comma -> Sequence.
-         - "Padahal kalau dipikir-pikir lagi, sebenarnya itu cuma trik marketing." -> SPLIT at comma -> Sequence.
-         - "Kita akan mulai hitung dari tanda LIMA, yang sering diremehkan." -> SPLIT at comma -> Sequence.
-       
-       - Action: Split text at the comma/conjunction.
-       - FORMAT MUST BE: "Sequence".
-
-    STEP C: SINGLE PANEL
-    - ONLY if the text is short (< 10 words) AND has NO comma triggers AND is not a Heading.
-    - FORMAT MUST BE: "Single Panel".
-
-    STEP D: SUBTITLE/HEADING DETECTION
-    - If the text is a Heading (Rule 0), Format MUST be "Single Panel" but visual prompt MUST be a Title Card.
+    CRITICAL RULE 2: Each scene = 1 frame. No Multi Panel, no Sequence. The 'splitText' array contains chunks of 3-15 words for timing. The visualPrompt describes a single image.
 
     CRITICAL - VISUAL PROMPT STRUCTURE:
     
-    RULE 1: LOCATION & BACKGROUND (MANDATORY & INTERNATIONAL)
-    - IF NOT using "ilmu lidi" style: Start EVERY prompt with: "[Indoor/Outdoor] - [Specific Location Description]". Use Universal/International settings.
-    - IF using "ilmu lidi" style: The background MUST BE described as "Pure solid minimalist white background". Characters can interact with primary objects (desk, chair, etc), but DO NOT add walls, floors, scenery, or full environmental settings. DO NOT use [Indoor/Outdoor]. Focus entirely on the character format, primary objects, and action. Example: "Pure solid minimalist white background. [Character] is doing [Action] with [Object]"
-    - Example (Not Ilmu Lidi): "[Indoor] - Inside a modern minimalist office." or "[Outdoor] - In a busy street."
+    RULE 1: NO BACKGROUND OR STYLE DESCRIPTIONS
+    - Do NOT include any background, location, or style descriptions in your prompt.
+    - Do NOT start with "[Indoor/Outdoor]" or any location tag.
+    - Do NOT mention "white background", "full color", "vector style", or any visual style terms.
+    - The visual style and background are handled by an automatic style suffix appended after generation.
+    - Focus ONLY on: character action, expression, composition, camera angle, objects involved.
+    - Example prompt (what you should write): "${styleSuffix.toLowerCase().includes('stick figure') 
+      ? (language === 'id' ? 'Stick figure karakter berdiri di depan lemari es terbuka, ekspresi terkejut.' : 'A stick figure character stands in front of an open refrigerator, surprised expression, low angle shot, comic composition.') 
+      : (language === 'id' 
+        ? narratorName + ' berdiri di depan lemari es terbuka, ekspresi terkejut setengah badan.' 
+        : narratorName + ' standing in front of an open refrigerator, surprised expression, half body shot.')}"
+    - Example of what NOT to do (style/background): "Pure solid minimalist white background. In a modern kitchen..."
     
     RULE 2: THEMATIC EASTER EGGS (MANDATORY & CONTEXTUAL)
     - You MUST include ${easterEggCount} specific easter egg(s). Target types: ${easterEggTypes.join(", ")}.
@@ -445,43 +563,27 @@ MAPPING — Pick the BEST match for what this scene DOES:
     - ACTION: The visual prompt MUST describe a Title Card.
     - INSTRUCTION: Add "Teks besar '[Content]' muncul di tengah layar dengan font Headline tebal. Desain minimalis."
     
-    CASE 2: MULTI PANEL (2 or 3)
-    - If Format is "Multi Panel", create ONE prompt describing a split screen.
-    - STRICT FORMAT (MUST FOLLOW THIS EXACTLY):
-      "Split Screen / Multi Panel.
-       Panel 1 (Kiri): [Action/Visual 1]. [Location].
-       easter_egg: [Pop Culture Item]
-       
-       Panel 2 (Tengah/Kanan): [Action/Visual 2]. [Location].
-       easter_egg: [Pop Culture Item]
-       
-       (IF 3 PANELS)
-       Panel 3 (Kanan): [Action/Visual 3]"
-           
-    CASE 3: SEQUENCE (V2.4 LOGIC)
-    - You MUST plan the visual flow.
-    - SEPARATOR: You MUST separate the visual description for EACH frame using the delimiter " ||| ".
-    - Example for 2 frames: "[Indoor] - [Location]... Visual Frame 1 description ||| [Indoor] - [Location]... Visual Frame 2 description starting with Referensi..."
-
-    CASE 4: SINGLE PANEL (Standard)
-    - Standard visual description. Include 'easter_egg'.
+    CASE 2: STANDARD FRAME
+    - Standard visual description. Include 'easter_egg'. A single image that captures the narrative.
+    - The 'splitText' contains chunks for timing — the image itself is one unified composition.
 
     CRITICAL - CHARACTER PRESENCE (STRICT USAGE OF AVAILABLE CHARACTERS):
     1. AVAILABLE CHARACTERS: You have these characters available: "${characterList}".
     2. USAGE RULE: You MUST use the characters from the AVAILABLE CHARACTERS list in the scenes. Do NOT just use "${narratorName}" for everything.
     3. DISTRIBUTION: If there are multiple available characters, distribute them across the scenes. Have them act out or interact with the situations described in the narrative.
-    4. FALLBACK: Only if the narrative is purely abstract and no other characters fit, use "${narratorName}" observing the scene. But strongly prefer using the other available characters.
+    ${enforceObserver
+        ? `4. FALLBACK: Only if the narrative is purely abstract and no other characters fit, use "${narratorName}" observing the scene. But strongly prefer using the other available characters.`
+        : `4. DO NOT add "${narratorName}" as an observer. If the scene has no available characters, you may leave it without any character. This is a non-mascot channel.`
+    }
     
     CRITICAL - FRAMING & COMPOSITION RULES (STRICT):
     1. MINIMUM FRAMING: "Half-Body Shot" (Setengah Badan) or "Full Body Shot".
-    2. VISIBILITY: At least one Reference Character MUST be visible in every frame.
-    3. PROHIBITION: DO NOT generate Extreme Close-ups of body parts (hands, feet) or objects without the character's face/body being visible.
+    2. VISIBILITY: Reference Character SHOULD be visible in host-direct and some scenes, but NOT in every frame. typography-hero scenes MUST have NO character. metaphor-scene may use objects instead of characters. contrast should use DIFFERENT characters on each side, not the same character twice.
+    3. PROHIBITION: DO NOT generate Extreme Close-ups of body parts (hands, feet) or objects without purpose. Object-only scenes ARE allowed for metaphor and typography.
 
-    CRITICAL - CHARACTER DESCRIPTION RESTRICTIONS (NEGATIVE PROMPTING):
-    1. DO NOT describe the character's clothing (e.g., "memakai baju merah", "celana jeans", "topi").
-    2. DO NOT describe the character's physical features (e.g., "rambut hitam", "mata besar").
-    3. DO NOT use the word "Ilustrasi".
-    4. JUST use the Character Name and their Action/Pose. The reference image handles the rest.
+    CRITICAL - CHARACTER DESCRIPTION RULES:
+    1. REFERENCE CHARACTER (narrator/host with reference image): JUST use the character name and their action/pose. DO NOT describe clothing, physical features, or appearance — the reference image handles the visual identity. DO NOT use the word "Ilustrasi".
+    2. SUPPORTING CHARACTER (figuran WITHOUT reference image): MUST describe IN FULL — age, gender, outfit, hairstyle. Example: "seorang wanita 30 tahun berambut pendek dengan blazer navy". This ensures the image generator can create a visually distinct character. Figuran descriptions must be specific and memorable.
 
     FINANCIAL/MATH OVERLAY RULE (CRITICAL FOR V2.7):
     If the narrative contains monetary values or calculations (e.g., "sepuluh ribu", "tiga ratus ribu", "tiga juta enam ratus ribu"):
@@ -490,40 +592,41 @@ MAPPING — Pick the BEST match for what this scene DOES:
     3. ADD INSTRUCTION: "Teks besar '[Angka] [Periode]' muncul melayang dengan font tebal digital."
     
     STYLE MANDATE:
-    - Every generated 'visualPrompt' MUST end with this exact sentence: "${styleSuffix}"
+    - Do NOT include any style description or style suffix in your prompt.
+    - The visual style suffix will be appended automatically after generation.
+    - Your prompt MUST contain ONLY: scene content, character actions, expressions, composition, camera angles.
     
     SCENE TYPE VARIETY & COMPOSITION (CRITICAL — DO NOT IGNORE):
-    - VARY the sceneType across scenes. Do NOT default to "concept-visual" for every scene.
-    - A good storyboard uses 6-10 different scene types. Be deliberate.
+    - VARY the sceneType across scenes. Do NOT default to "host-direct" for every scene.
+    - Use ALL 5 scene types across the storyboard for maximum visual variety.
     - Choose based on NARRATIVE FUNCTION, not convenience.
+    
+    CHARACTER DISTRIBUTION (CRITICAL):
+    - ${narratorName} ONLY for host-direct scenes. For contrast, metaphor, multi-panel → use OTHER characters or objects.
+    - typography-hero → NO CHARACTER AT ALL. Text/number only.
+    - ${narratorName} in MAX 50% of scenes. The rest MUST vary.
     
     **CRITICAL: YOUR visualPrompt MUST REFLECT the chosen sceneType's visual language.**
     Do NOT just write "Mascot is doing X" for every scene type. Each scene type has UNIQUE visual composition:
     
     | sceneType | What visualPrompt MUST describe |
     |---|---|
-    | host-direct | Mascot face kamera, eye contact, gestur tangan alami, teks overlay floating. Karakter adalah fokus utama 50-60% frame. |
-    | icon-explainer | Mascot berdiri di samping IKON/OBJEK dengan LABEL TEKS di bawahnya. Ikon adalah elemen visual utama di samping mascot. |
-    | split-contrast | DUA SISI dalam satu frame — kiri vs kanan dengan garis pemisah. Satu sisi gelap/negatif, sisi lain terang/positif. |
-    | scene-interaction | DUA KARAKTER berinteraksi. Over-the-shoulder shot atau wide shot. Body language menunjukkan relasi. |
-    | concept-visual | DIAGRAM/OTAK/KONSEP ABSTRAK sebagai elemen utama 60-70% frame. Mascot di samping mengamati. USE SPARINGLY. |
-    | typography-hero | SATU KATA/FRASA BESAR sebagai elemen utama 50-60% frame. Mascot di pojok bereaksi terhadap teks. Teks WAJIB visible. |
-    | stock-footage | Background FOTO REALISTIS penuh frame (alam/kota/klinik). Mascot overlay kecil di pojok. |
-    | multi-panel | Frame terbagi jadi 2-4 PANEL komik. Masing-masing panel punya adegan sendiri. Border tipis pemisah. |
-    | whiteboard-list | PAPAN TULIS besar 60-70% frame dengan bullet points. Mascot berdiri di samping papan. |
-    | quote-card | KARTU/KOTAK di tengah frame berisi KUTIPAN. Mascot di pojok kontemplatif. Dekorasi minimal. |
-    | data-visual | ANGKA BESAR + GRAFIK/BATANG di tengah 60% frame. Mascot di samping menunjuk/bereaksi. |
-    | metaphor-scene | Adegan METAFORA PENUH — mascot ADA DI DALAM metafora (bukan mengamati). Contoh: mascot di dalam kandang, atau memanggul beban raksasa. |
-    | process-flow | Diagram ALUR bertahap dengan PANAH penghubung. Mascot menunjuk ke satu tahap. Label di setiap tahap. |
-    | pov-scene | Perspektif FIRST PERSON — kamera = mata karakter. Tangan karakter visible di tepi frame. |
-    | cinematic-insert | Adegan FILM realistik — TANPA MASCOT. Pencahayaan sinematik, warna sesuai mood. Pure storytelling visual. |
-    | timeline-progress | Garis WAKTU horizontal/vertikal dengan milestone. Mascot di salah satu ujung. Masa lalu pudar, masa depan cerah. |
-    | cross-section | IRISAN/BELAHAN objek 70% frame — lihat ke DALAM otak/sistem. Label callout. Mascot di samping. |
-    | scale-compare | Perbandingan UKURAN — objek raksasa vs kecil dalam satu frame. Mascot sebagai skala referensi. |
-    | drawing-live | TANGAN menggambar di papan — visible di tepi frame. Gambar sebagian selesai. Gaya sketsa. |
-    | transformation | DUA STATE dalam satu frame — BEFORE (pudar/grayscale) vs AFTER (vibrant/glowing). Zona transisi di tengah. |
+    | host-direct | Mascot FACE KAMERA 50-60% frame, gestur tangan DINAMIS dan EKSPRESIF, kontak mata langsung. Teks overlay sebagai floating labels. DILARANG: pose statis "berdiri tegak", "tatapan lembut", atau gestur pasif. |
+    | contrast | DUA SISI kontras dalam satu frame — kiri/kanan split-frame. Garis pemisah tegas. Satu sisi sepia/lama, sisi lain vibrant/baru. |
+    | metaphor-scene | METAFORA PENUH — mascot ADA DI DALAM adegan metafora. Seluruh frame adalah dunia metafora. Gaya surealis, simbolik. |
+    | typography-hero | TEKS/ANGKA sebagai hero 50-60% frame — kata kunci BESAR di tengah. Mascot di pojok (max 20% frame) bereaksi. |
+    | multi-panel | Frame terbagi jadi 2-3 PANEL komik. Masing-masing panel punya adegan sendiri. Border tipis pemisah. |
     
-    CONTOH: Jika sceneType="icon-explainer", visualPrompt HARUS deskripsikan ikon dengan label. Jika sceneType="typography-hero", visualPrompt HARUS deskripsikan teks besar sebagai elemen hero. Jika tidak ada elemen scene type dalam visualPrompt, scene type tidak berguna.
+    CONTOH: Jika sceneType="typography-hero", visualPrompt HARUS deskripsikan teks besar sebagai elemen hero. Jika sceneType="contrast", visualPrompt HARUS deskripsikan dua sisi dengan split-frame. Jika tidak ada elemen scene type dalam visualPrompt, scene type tidak berguna.
+    
+    🔴 NO TEXT IN IMAGE: Unless sceneType is "typography-hero", DO NOT describe any text, words, letters, labels, signs, subtitles, speech bubbles, or written content appearing inside the image. The rendered image must contain ZERO text elements except when typography IS the hero. This is a HARD RULE.
+    
+    CRITICAL — THESE MUST BE INCLUDED VERBATIM IN EVERY visualPrompt:
+    - Anti-Mirror Clause: "Do NOT apply flipped/reversed text effects (text mirroring) to any text, logos, symbols, or written words on the character's clothing/accessories. Keep text in original readable orientation. Physical mirrors/reflections as props ARE allowed."
+    ${enforceObserver
+        ? `- If narratorName "${narratorName}" is NOT mentioned in the prompt, AND that is the only available character: add ". ${narratorName} is standing in the scene, observing quietly (Half-Body Shot)."`
+        : `- Do NOT add "${narratorName}" as an observer. Scenes may proceed without any character present.`
+    }
     
     RETURN JSON FORMAT ONLY. The output must be valid JSON matching the schema.
   `;
@@ -541,8 +644,17 @@ MAPPING — Pick the BEST match for what this scene DOES:
 
   try {
       const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        ...generateConfig
+        model: 'gemini-3.1-flash-lite',
+        ...generateConfig,
+        config: {
+          ...generateConfig.config,
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+          ]
+        }
       }), 2, 2000); // 2 retries
       text = response.text || "";
   } catch (error: any) {
@@ -559,129 +671,14 @@ MAPPING — Pick the BEST match for what this scene DOES:
     return data.scenes.map((scene, sIdx) => ({
       id: `scene-${Date.now()}-${sIdx}`,
       narrativeText: scene.narrativeText,
-      frames: scene.frames.flatMap((frame, fIdx) => {
-        let correctedFormat = frame.format;
-        const textSegments = frame.splitText || [];
-        let isSequence = false;
-
-        // STRICT LOGIC ENFORCEMENT:
-        // If text is split (>1), it CANNOT be Single Panel.
-        if (textSegments.length > 1) {
-             const combinedText = textSegments.join(" ").toLowerCase();
-             const fmtLower = (correctedFormat || "").toLowerCase();
-             
-             const isExplicitSequence = fmtLower.includes('sequence');
-             const isExplicitMulti = fmtLower.includes('multi');
-
-             if (isExplicitSequence) {
-                 isSequence = true;
-             } else if (isExplicitMulti) {
-                 isSequence = false;
-             } else {
-                 // Auto-detect if format was incorrect/missing
-                 const multiPanelTriggers = [" atau ", " sedangkan ", " sementara ", " di sisi lain ", " tapi ", " namun ", " bukan "];
-                 const negativeCount = (combinedText.match(/bukan/g) || []).length;
-                 const isMultiPanelContext = multiPanelTriggers.some(t => combinedText.includes(t)) || negativeCount >= 2;
-
-                 if (!isMultiPanelContext) {
-                     isSequence = true;
-                     correctedFormat = `Sequence (${textSegments.length} Frames)`;
-                 } else {
-                     correctedFormat = `Multi Panel (${textSegments.length})`;
-                     isSequence = false;
-                 }
-             }
-        }
-
-        // CRITICAL FIX: If Sequence, we MUST return multiple frame objects to ensure 1 prompt row per text split.
-        if (isSequence && textSegments.length > 1) {
-            const fullPrompt = frame.visualPrompt;
-            
-            // 1. Try splitting by explicit delimiter "|||"
-            let splitParts = fullPrompt.split("|||").map(s => s.trim()).filter(s => s.length > 0);
-            
-            // 2. Fallback: Regex if delimiter failed or insufficient parts
-            let usedRegex = false;
-            if (splitParts.length < textSegments.length) {
-                 const splitRegex = /(?:Frame|Panel|Sequence|Langkah|Step)\s*\d+[:.]|(?:\d+\.)\s/gi;
-                 const regexParts = fullPrompt.split(splitRegex).map(s => s.trim()).filter(s => s.length > 0);
-                 if (regexParts.length > splitParts.length) {
-                     splitParts = regexParts;
-                     usedRegex = true;
-                 }
-            }
-
-            // CORRECTION FOR PREAMBLE ARTIFACT (V2.16 Bug Fix)
-            // If regex split resulted in [Preamble, Frame1, Frame2...] structure where Preamble is just location info,
-            // we must merge it into Frame 1 so Frame 1 isn't empty/just location.
-            // Check: If we have more parts than segments, and index 0 is likely preamble.
-            if (usedRegex && splitParts.length > textSegments.length) {
-                const preamble = splitParts[0];
-                // Heuristic: If preamble is short or starts with [Location], merge it.
-                if (preamble.startsWith('[') || preamble.length < 50) {
-                     splitParts[1] = `${preamble} ${splitParts[1]}`;
-                     splitParts.shift(); // Remove preamble
-                }
-            }
-            
-            return textSegments.map((seg, i) => {
-                let p = "";
-
-                if (i < splitParts.length) {
-                    p = splitParts[i];
-                } else {
-                    // Fallback strategies if splitting failed
-                    if (splitParts.length > 0) {
-                        p = splitParts[splitParts.length - 1]; 
-                    } else {
-                        p = (i === 0) ? fullPrompt : "Lanjutkan aksi dari frame sebelumnya sesuai narasi.";
-                    }
-                }
-
-                // Cleanup any stray formatting prefixes that the AI might have included
-                p = p.replace(/^(?:Sequence|Frame|Panel|Langkah|Step)[\s\w\(\)]*[:\-]*\s*/gi, "").trim();
-                p = p.replace(/^(?:\d+\.)\s*/g, "").trim();
-
-                // V2.0 Logic: Sequence > 1 must include reference prefix (Double Check Safety)
-                if (i > 0) {
-                     const prefix = "Referensi dari Gambar sebelumnya, tapi... ";
-                     // Avoid double prefixing if AI already did it (which V2.4 requests)
-                     if (!p.toLowerCase().startsWith("referensi dari")) {
-                        p = prefix + p;
-                     }
-                }
-
-                // Restore mandatory style if lost during split
-                const styleCheck = "Modern 2D webcomic style"; // Basic check
-                if (!p.includes(styleCheck)) {
-                    p += " " + styleSuffix;
-                }
-
-                p = applyNarratorSuffix(p, narratorName, narratorSuffix);
-
-                return {
-                    id: `frame-${Date.now()}-${sIdx}-${fIdx}-${i}`,
-                    format: `Sequence ${i+1}/${textSegments.length}`,
-                    sceneType: (frame.sceneType || 'host-direct') as SceneType,
-                    sceneMode: (frame.sceneMode || 'intro') as SceneMode,
-                    visualPrompt: p,
-                    splitText: [seg], // One segment per frame
-                    isGenerating: false
-                };
-            });
-        }
-
-        // Multi Panel or Single Panel stays as 1 Frame object
-        return [{
-            id: `frame-${Date.now()}-${sIdx}-${fIdx}`,
-            format: correctedFormat,
-            sceneType: (frame.sceneType || 'host-direct') as SceneType,
-            sceneMode: (frame.sceneMode || 'intro') as SceneMode,
-            visualPrompt: applyNarratorSuffix(frame.visualPrompt, narratorName, narratorSuffix),
-            splitText: frame.splitText,
-            isGenerating: false
-        }];
-      }),
+      frames: scene.frames.map((frame, fIdx) => ({
+        id: `frame-${Date.now()}-${sIdx}-${fIdx}`,
+        sceneType: (frame.sceneType || 'host-direct') as SceneType,
+        sceneMode: (frame.sceneMode || 'direct') as SceneMode,
+        visualPrompt: applyNarratorSuffix(frame.visualPrompt, narratorName, narratorSuffix),
+        splitText: frame.splitText,
+        isGenerating: false
+      })),
       isRestructuring: false
     }));
   } catch (e) {
@@ -706,7 +703,8 @@ export const generatePromptsFromFrames = async (
     easterEggTypes: string[] = ["pop culture"],
     negativePrompt: string = "",
     language: 'id' | 'en' = 'id',
-    manualApiKey?: string
+    manualApiKey?: string,
+    enforceObserver: boolean = true
 ): Promise<string[]> => {
     const ai = getClient(manualApiKey);
 
@@ -716,9 +714,11 @@ export const generatePromptsFromFrames = async (
     // Prepare a simplified representation of the frames for the AI
     const framesConfig = frames.map((f, i) => ({
         index: i,
-        format: f.format,
         splitText: f.splitText
     }));
+
+    // Bilingual T2I composition template per scene type
+    const sceneTypeComposition = buildSceneTypeComposition(language);
 
     const schema: Schema = {
         type: Type.OBJECT,
@@ -745,36 +745,18 @@ export const generatePromptsFromFrames = async (
         1. Input is an array of frames. Output MUST be an array of "prompts" of exactly the same length.
         2. INDEX MAPPING IS CRITICAL. Prompt at index 0 corresponds to Frame at index 0. Prompt at index 1 corresponds to Frame at index 1.
         
-        3. IF FRAME FORMAT IS "Multi Panel":
-           - The frame has a 'splitText' array with multiple items.
-           - ACTION: Create ONE cohesive prompt that describes a comic strip Side-by-Side layout WITH visible panel borders.
-           - STRICT FORMAT:
-             "Komik Strip / Side-by-Side.
-              Panel 1 (Kiri): [Action/Visual]. [Location].
-              easter_egg: [Pop Culture]
-              
-              Panel 2 (Kanan): [Action/Visual]. [Location].
-              easter_egg: [Pop Culture]
-              
-              (IF 3 PANELS)
-              Panel 3 (Kanan): [Action/Visual]"
-           - RULE: The panels must be arranged HORIZONTALLY (Left to Right). NEVER use Top/Bottom split.
-           - RULE (CRITICAL): Setiap panel WAJIB memiliki border/kotak pemisah yang jelas — seperti komik strip. Gunakan garis hitam tebal sebagai frame antar panel. Jangan buat gambar tanpa pembatas panel.
-           
-        4. IF FRAME FORMAT CONTAINS "Sequence":
-           - TARGET: Create a prompt for ONE SINGLE FRAME out of a sequence.
-           - CRITICAL RULE: DO NOT describe the entire sequence. ONLY describe what happens in THIS SPECIFIC FRAME based on its 'splitText'.
-           - CRITICAL ERROR PREVENTION: NEVER use phrases like "kemudian di frame berikutnya" or "di frame terakhir". A single prompt MUST describe ONLY A SINGLE IMAGE.
-           - First frame of sequence: Describe the visual scene fully based on the text.
-           - Subsequent frames of sequence: Start with 'Referensi dari Gambar sebelumnya, tapi...' then describe the action/change for THIS frame.
-           - DO NOT include the text "Sequence X/Y" or "Frame X" inside the generated prompt.
-           - DO NOT copy the description of Frame 1 into Frame 2.
-           
-           [EXAMPLE SEQUENCE CORRECT OUTPUT]:
-           - Prompt 0 (Sequence 1/3): '[Indoor] - Di dalam kelas. Sapi makan rumput.'
-           - Prompt 1 (Sequence 2/3): 'Referensi dari Gambar sebelumnya, tapi kini sapi sedang berlari kencang.'
-           - Prompt 2 (Sequence 3/3): 'Referensi dari Gambar sebelumnya, tapi kini sapi berlari bersama kuda.'
-           
+        3. STANDARD FRAME: Each frame represents ONE SINGLE IMAGE. Do NOT describe multiple panels or sequences.
+           - The 'splitText' array contains text chunks for overlay timing — the image itself is a single unified composition.
+           - Include 'easter_egg' in the scene description.
+           - NEVER use phrases like "di frame berikutnya" or describe what happens in other frames.
+           - A single prompt describes ONLY A SINGLE IMAGE. This is critical.
+        
+        4. SCENE TYPE VISUAL COMPOSITION (CRITICAL) — Each sceneType MUST drive unique visuals:
+
+${sceneTypeComposition}
+        
+        CRITICAL: Do NOT use the same composition for different sceneTypes.
+        
         5. TEXT OVERLAY RULE (V2.8 UPDATE):
            - IF the text contains words in ALL CAPS (e.g. "GAK SADAR DIRI"), you MUST include an instruction: "Teks besar '[WORD]' muncul di gambar dengan font tebal komik."
            - **SUBTITLE / HEADING RULE**: If the narrative looks like a Heading (e.g. "Tanda #3: ...", "Nomor 1: ..."), you MUST include instruction: "Teks besar '[FULL SUBTITLE]' muncul di tengah layar dengan font Headline tebal. Desain minimalis."
@@ -790,8 +772,11 @@ export const generatePromptsFromFrames = async (
            - YOU MUST INCLUDE "${narratorName}" in the prompt.
            - DESCRIBE him as OBSERVING the scene (e.g. "${narratorName} watching the situation").
 
-        8. LOCATION & EASTER EGG RULES (MANDATORY):
-           - Start EVERY prompt with: "[Indoor/Outdoor] - [Specific Location Description]".
+        8. NO BACKGROUND OR STYLE DESCRIPTIONS:
+           - Do NOT include any background, location, or style descriptions.
+           - Do NOT start with "[Indoor/Outdoor]" or any location tag.
+           - The visual style and background are handled by an automatic suffix appended after generation.
+           - Focus ONLY on: character action, expression, composition, camera angle, objects.
            - Include ${easterEggCount} "easter_egg" item(s): ${easterEggTypes.join(", ")}.
         
         9. CHARACTER DESCRIPTION RESTRICTIONS (STRICT):
@@ -804,10 +789,34 @@ export const generatePromptsFromFrames = async (
            - VISIBILITY: At least one Reference Character MUST be visible in every frame.
            - PROHIBITION: DO NOT generate Extreme Close-ups of body parts (hands, feet) or objects without the character's face/body being visible.
            
-        11. STYLE REQUIREMENT (MANDATORY):
-           - Every single prompt MUST end with or contain this exact sentence: "${styleSuffix}"
-           - This is non-negotiable for the visual consistency.
-
+        11. STYLE REQUIREMENT:
+           - Do NOT include any style description, style suffix, or visual style terms in your prompt.
+           - The style suffix will be appended automatically after generation.
+           - Your prompt MUST contain ONLY scene content — character actions, expressions, composition, camera angles.
+           - This is critical to avoid duplicate style/background descriptions in the final image prompt.
+        
+        12. VARIATION RULE — EVERY PROMPT MUST BE UNIQUE:
+           - Each prompt MUST be visually distinct from the others. No two prompts should describe the same scene.
+           - Even when narrative content is similar between frames, vary the camera angle, character pose, composition, perspective, background focus, or visual elements.
+           - Do NOT copy-paste the same description for different frames.
+           - Example of what NOT to do (duplicate): Frame 0: "person in front of fridge" AND Frame 1: "person in front of fridge" — BAD, these are identical.
+           - Example of good variation: Frame 0: "person in front of fridge, wide shot" AND Frame 1: "close-up of person's hand on fridge handle, low angle" — GOOD, distinct perspectives.
+        
+        14. CRITICAL UNIQUENESS — EACH PROMPT MUST BE VISUALLY DISTINCT:
+           - The FULL CONTEXT is: ${context}
+           - This specific scene's text is: "${narrativeText}"
+           - Your prompt MUST focus on the UNIQUE details of THIS specific narrative text.
+           - Do NOT reuse compositions or descriptions from other scenes.
+           - Analyze what makes THIS moment different: is it a specific object, emotion, action, or setting change?
+           - Example: "a carton of milk. some cheese." = focus on refrigerator shelves, food packaging, barcode, cold air — different from "leftover pizza" which = pizza box, opened slice, food waste.
+           - The sceneType label is just a guide — the NARRATIVE CONTENT determines the actual visual.
+        
+        15. CRITICAL — INCLUDE THESE VERBATIM IN EVERY prompt:
+           - Anti-Mirror Clause: "Do NOT apply flipped/reversed text effects (text mirroring) to any text, logos, symbols, or written words on the character's clothing/accessories. Keep text in original readable orientation. Physical mirrors/reflections as props ARE allowed."
+           ${enforceObserver
+               ? `- If narratorName "${narratorName}" is NOT mentioned in the prompt, AND that is the only available character: add ". ${narratorName} is standing in the scene, observing quietly (Half-Body Shot)."`
+               : `- Do NOT add "${narratorName}" as an observer. Scene without any character is allowed.`
+           }
         RETURN JSON FORMAT ONLY. Output must be a JSON object with a "prompts" array of strings.
     `;
 
@@ -815,7 +824,7 @@ export const generatePromptsFromFrames = async (
 
     try {
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
+            model: 'gemini-3.1-flash-lite',
             contents: promptContent,
             config: {
                 systemInstruction: finalSystemInstruction,
@@ -836,9 +845,11 @@ export const generatePromptsFromFrames = async (
     const data = JSON.parse(text) as { prompts: string[] };
     return data.prompts.map(p => {
         // Cleanup any stray formatting prefixes that the AI might have included
-        let cleaned = p.replace(/^(?:Sequence|Frame|Panel|Langkah|Step|Prompt)[\s\w\(\)\/]*[:\-\.]*\s*/gi, "").trim();
+        let cleaned = p.replace(/^(?:Sequence|Frame|Panel|Langkah|Step|Prompt)[\s\w\(\)\/]*[:\.\-]*\s*/gi, "").trim();
         cleaned = cleaned.replace(/^(?:\d+\.)\s*/g, "").trim();
-        return applyNarratorSuffix(cleaned, narratorName, narratorSuffix);
+        const enhanced = applyNarratorSuffix(cleaned, narratorName, narratorSuffix);
+        // Append style suffix — visible in T2I column, sent AS-IS to Gemini (no hidden modifications)
+        return enhanced + "\n" + styleSuffix;
     });
 };
 
@@ -852,13 +863,13 @@ export const refineScenePrompt = async (
   currentPrompt: string,
   instruction: string,
   systemInstruction: string,
-  narratorName: string = "Norman",
-  narratorSuffix: string = "",
-  styleSuffix: string = "Modern 2D webcomic style",
-  easterEggCount: number = 1,
-  easterEggTypes: string[] = ["pop culture"],
-  negativePrompt: string = "",
-  language: 'id' | 'en' = 'id',
+  narratorName: string,
+  narratorSuffix: string,
+  styleSuffix: string,
+  easterEggCount: number,
+  easterEggTypes: string[],
+  negativePrompt: string,
+  language: 'id' | 'en',
   manualApiKey?: string,
   isCharacter: boolean = false
 ): Promise<string> => {
@@ -901,7 +912,7 @@ export const refineScenePrompt = async (
 
   // GEMINI
   const response = await ai.models.generateContent({
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-3.1-flash-lite',
     contents: promptContent,
     config: {
       systemInstruction: finalSystemInstruction, // Pass the persona
@@ -910,18 +921,18 @@ export const refineScenePrompt = async (
 
   let result = response.text || currentPrompt;
   result = result.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  
+
   try {
       if (result.trim().startsWith('{')) {
           const parsed = JSON.parse(result);
-          if (parsed.visualPrompt) return applyNarratorSuffix(parsed.visualPrompt, narratorName, narratorSuffix);
-          if (parsed.prompt) return applyNarratorSuffix(parsed.prompt, narratorName, narratorSuffix);
+          if (parsed.visualPrompt) return applyNarratorSuffix(parsed.visualPrompt, narratorName, narratorSuffix) + "\n" + styleSuffix;
+          if (parsed.prompt) return applyNarratorSuffix(parsed.prompt, narratorName, narratorSuffix) + "\n" + styleSuffix;
       }
   } catch (e) {
       // Not JSON
   }
 
-  return applyNarratorSuffix(result, narratorName, narratorSuffix);
+  return applyNarratorSuffix(result, narratorName, narratorSuffix) + "\n" + styleSuffix;
 };
 
 /**
@@ -1116,7 +1127,7 @@ export const detectCharactersFromNarrative = async (
   console.log("Detecting characters with model: gemini-3.1-flash-lite-preview");
   try {
     const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       contents: promptContent,
       config: {
         responseMimeType: "application/json",
@@ -1171,7 +1182,7 @@ export const generateCharacterPrompt = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       contents: promptContent,
     });
 
@@ -1186,13 +1197,15 @@ export const generateCharacterPrompt = async (
  */
 export const generateSceneImage = async (
   visualPrompt: string,
-  refImages: ReferenceImage[],
+  refImages: ReferenceImage[] = [],
   previousImage?: string,
-  narratorName: string = "Norman",
-  styleSuffix: string = "Modern 2D webcomic style",
-  negativePrompt: string = "",
+  narratorName: string = 'Norman',
+  styleSuffix: string = STYLE_SUFFIX,
+  negativePrompt: string = '',
   manualApiKey?: string,
-  sceneType?: string
+  sceneType?: string,
+  enforceObserver: boolean = true,
+  visualReference: string = ''
 ): Promise<string> => {
   const ai = getClient(manualApiKey);
   
@@ -1200,41 +1213,23 @@ export const generateSceneImage = async (
   const parts: any[] = [];
   let combinedText = "";
 
-  let finalVisualPrompt = visualPrompt.replace(/^(?:Sequence|Frame|Panel|Langkah|Step)[\s\w\(\)]*[\:\-]*\s*/gi, "").trim();
-  
-  // Strip [SCENE: ...] marker — it's for display only, not for the image model
-  finalVisualPrompt = finalVisualPrompt.replace(/\n\[SCENE:.*?\]/g, "").trim();
+  // SEND PROMPT AS-IS — no hidden modifications.
+  // Everything the user sees in the T2I column is exactly what gets sent.
+  const finalVisualPrompt = visualPrompt.trim();
 
-  // Filter Banned Words from Prompt (Client-side safety)
-  if (negativePrompt.trim()) {
-      const bannedList = negativePrompt.split(',').map(w => w.trim()).filter(w => w);
-      bannedList.forEach(word => {
-          const regex = new RegExp(word, 'gi');
-          finalVisualPrompt = finalVisualPrompt.replace(regex, "");
+  // 1. Visual Reference (PRIMARY — always sent first as the visual identity anchor)
+  if (visualReference) {
+      const mimeType = visualReference.split(';')[0].split(':')[1] || "image/jpeg";
+      parts.push({
+          inlineData: {
+              mimeType: mimeType,
+              data: visualReference.split(',')[1]
+          }
       });
+      combinedText += `PRIMARY VISUAL REFERENCE: This is the visual identity reference. All generated images MUST match this image's style, composition aesthetic, line art quality, and overall visual language. Characters should be drawn in this art style. Adapt the scene description below to match this visual identity.\n`;
   }
 
-  // Add scene type composition rule to guide AI composition
-  if (sceneType) {
-      const compositionRule = getSceneTypeComposition(sceneType);
-      if (compositionRule) {
-          finalVisualPrompt += `\n\nCOMPOSITION RULE: ${compositionRule}`;
-      }
-  }
-
-  // Prepend style prefix to signal visual language
-  if (sceneType && SCENE_STYLE_PREFIX[sceneType]) {
-      finalVisualPrompt = SCENE_STYLE_PREFIX[sceneType] + finalVisualPrompt;
-  }
-
-  // V2.13: INTELLIGENT FALLBACK OBSERVER LOGIC
-  if (refImages.length === 1 && refImages[0].name.toLowerCase().includes(narratorName.toLowerCase())) {
-      if (!finalVisualPrompt.toLowerCase().includes(narratorName.toLowerCase())) {
-           finalVisualPrompt += ` . ${narratorName} is standing in the scene, observing quietly (Half-Body Shot).`;
-      }
-  }
-
-  // 1. Add Reference Images
+  // 2. Character Reference Images (only if prompt mentions their name)
   if (refImages.length > 0) {
       refImages.forEach((img, index) => {
           const mimeType = img.data.split(';')[0].split(':')[1] || "image/jpeg";
@@ -1244,17 +1239,11 @@ export const generateSceneImage = async (
                   data: img.data.split(',')[1] 
               }
           });
-          combinedText += `Reference image ${index + 1} represents character: ${img.name}.\n`;
+          combinedText += `Reference image ${index + 1} represents character: ${img.name} (appearance/face reference).\n`;
       });
   }
 
-  // FALLBACK STYLE INSTRUCTION (Always applied, even if no ref)
-  combinedText += `STYLE REFERENCE (MANDATORY):
-  Use the defined Modern 2D Webcomic Style.
-  Characteristics: Pastel background, bold clean lines, cel-shading, cinematic lighting.
-  DO NOT draw the specific character "${narratorName}" UNLESS explicitly requested in the prompt or if no other character is present.\n`;
-
-  // 2. Add Previous Image for Sequence Consistency
+  // 3. Previous Image (scene-to-scene continuity)
   if (previousImage) {
       const mimeType = previousImage.split(';')[0].split(':')[1] || "image/jpeg";
       parts.push({
@@ -1263,25 +1252,11 @@ export const generateSceneImage = async (
               data: previousImage.split(',')[1]
           }
       });
-      combinedText += `PREVIOUS FRAME (Reference for continuity): Use this image as the starting point. Modify it based on the prompt below.\n`;
+      combinedText += `PREVIOUS FRAME (continuity): Use this as the starting point. Modify based on the prompt below.\n`;
   }
 
-  // 3. Add the Visual Prompt
-  const finalRequestPrompt = `
-    Generate a scene based on this prompt: "${finalVisualPrompt}".
-    Style Description: ${styleSuffix}.
-    ${refImages.length > 0 ? "Use the provided reference images for character consistency." : `Use '${narratorName}' ART STYLE (Flat colors, thick outlines).`}
-    ${previousImage ? "EDIT/MODIFY the Previous Frame to match the new action/description. Keep style consistent." : ""}
-    IMPORTANT: If the prompt asks for 'Text Overlay' or 'Teks besar', ensure the text is rendered clearly and legibly.
-    CRITICAL: For Multi-Panel images, use a COMIC STRIP STYLE layout. Each panel MUST have a CLEAR PANEL BORDER / FRAME separating it from the other panel(s) — like a comic book or newspaper comic strip. Add a visible thick black or dark outline border around each individual panel. The panels must look like separate comic panels arranged side-by-side.
-    ${styleSuffix.includes("pure white background") 
-      ? "FRAMING REQUIREMENT: full body shot. Ensure the entire character is visible from head to toe (Full Body Shot). Do not crop the head or feet. The character must be centered."
-      : "FRAMING REQUIREMENT: Ensure the character is visible from at least the waist up (Half-Body Shot). Do not crop the head. Do not make it an extreme close-up of objects/hands only."}
-    ${negativePrompt ? `NEGATIVE PROMPT (DO NOT INCLUDE): ${negativePrompt}` : ""}
-    CRITICAL: Do NOT mirror, flip, or reverse any text, logos, symbols, or written words visible on the character's clothing or accessories. Keep text in its original, readable orientation.
-  `;
-  
-  combinedText += finalRequestPrompt;
+  // 4. Add final combined text
+  combinedText += finalVisualPrompt;
   parts.push({ text: combinedText });
 
   const response = await ai.models.generateContent({
@@ -1308,4 +1283,854 @@ export const generateSceneImage = async (
 
   const finishReason = response.candidates?.[0]?.finishReason;
   throw new Error(`No image generated. Finish Reason: ${finishReason}. Response: ${responseText}`);
+};
+
+/**
+ * Batch generate prompts for ALL scenes in ONE Gemini call.
+ * Unlike generatePromptsFromFrames (per-scene), this lets the AI see ALL scenes
+ * and produce visually DISTINCT prompts for each one.
+ */
+/**
+ * Strip Indonesian location descriptions from visual prompts.
+ * Detects patterns like "Di dalam [tempat]", "[INDOOR] - [lokasi]", etc.
+ * and replaces them with pure white background indicators.
+ */
+function stripLocationDescriptions(prompt: string): string {
+  // Pattern: [INDOOR] - description or [OUTDOOR] - description
+  prompt = prompt.replace(/\[INDOOR\]\s*-\s*[^,.]+[.,]?\s*/gi, '');
+  prompt = prompt.replace(/\[OUTDOOR\]\s*-\s*[^,.]+[.,]?\s*/gi, '');
+  
+  // Pattern: "Di dalam [tempat]", "Di [tempat]", etc.
+  prompt = prompt.replace(/Di dalam\s+[^,.]{3,40}[.,]?\s*/gi, '');
+  prompt = prompt.replace(/Di (ruang|meja|bangku|kantor|sekolah|rumah|kelas|kamar|gedung|lantai|lorong|jalan|taman|pasar|mall|restoran|cafe|kedai|warung|tempat)\s+[^,.]{0,30}[.,]?\s*/gi, '');
+  
+  // Pattern: "ruang tamu", "meja kantor", "bangku kelas" as standalone
+  prompt = prompt.replace(/(ruang tamu|bangku kelas|meja kantor|ruang keluarga|kamar tidur|ruang makan)(\s+[^,.]{0,10})?[.,]?\s*/gi, '');
+  
+  // Clean up multiple spaces
+  prompt = prompt.replace(/\s{2,}/g, ' ').trim();
+  
+  return prompt;
+}
+
+export const batchGeneratePrompts = async (
+  scenes: { sceneId: string; narrativeText: string; frames: StoryFrame[] }[],
+  context: string,
+  characterList: string,
+  systemInstruction: string,
+  narratorName: string,
+  narratorSuffix: string,
+  styleSuffix: string,
+  easterEggCount: number,
+  easterEggTypes: string[],
+  negativePrompt: string,
+  language: 'id' | 'en',
+  manualApiKey?: string,
+  enforceObserver: boolean = true
+): Promise<Record<string, string[]>> => {
+  const finalSystemInstruction = processSystemInstruction(systemInstruction, narratorName, styleSuffix, easterEggCount, easterEggTypes, negativePrompt, language);
+  const ai = getClient(manualApiKey);
+
+  // Build the scene list
+  const sceneListStr = scenes.map((scene, i) => {
+    const frame = scene.frames[0];
+    return `Scene ${i} (ID: ${scene.sceneId}):
+  Narrative: "${scene.narrativeText}"
+  SceneType: ${frame?.sceneType || 'unknown'}
+  SceneMode: ${frame?.sceneMode || 'unknown'}
+  SplitText: ${JSON.stringify(frame?.splitText || [])}
+  Word Count: ${scene.narrativeText.split(/\\s+/).filter(w => w.length > 0).length}`;
+  }).join('\n\n');
+
+  const promptContent = `Generate ${language === 'en' ? 'ENGLISH' : 'INDONESIAN'} Visual Prompts for ALL ${scenes.length} scenes.
+
+FULL STORY CONTEXT:
+${context}
+
+CHARACTERS: ${characterList}
+
+EACH SCENE MUST HAVE A UNIQUE, VISUALLY DISTINCT PROMPT.
+No two prompts should describe the same visual composition.
+Even when scenes share similar content, vary: camera angle, character pose, perspective, background focus, lighting mood, and visual elements.
+
+HERE ARE ALL SCENES (each needs one visual prompt):
+${sceneListStr}
+
+SCENE TYPE VISUAL GUIDES (use these to differentiate each prompt):
+- host-direct: Character faces viewer directly, eye contact, like talking to camera.
+- contrast: Side-by-side, split composition (before/after). Two states compared.
+- metaphor-scene: Abstract, symbolic, surreal. NOT literal. Full metaphor world.
+- typography-hero: Text/headline/number is the main visual. Title card format. Big bold text.
+- multi-panel: Multiple panels in one image (comic strip). 2-3 panels.
+
+ANTI-DUPLICATE RULE (CRITICAL):
+- Read ALL scenes above. For each scene, analyze what makes it UNIQUE.
+- Even if SceneType is the same, the NARRATIVE CONTENT must drive different visuals.
+- Example: Scene about "milk and cheese" = focus on food packaging, refrigerator shelves, cold air
+- Example: Scene about "leftover pizza" = focus on pizza box, opened slice, food waste
+- These MUST produce different prompts.
+
+INCLUDE in EVERY prompt:
+- Anti-Mirror Clause: "Do NOT apply flipped/reversed text effects (text mirroring) to any text, logos, symbols, or written words on the character's clothing/accessories. Keep text in original readable orientation. Physical mirrors/reflections as props ARE allowed."
+${enforceObserver ? `- If narratorName "${narratorName}" needs to appear observing.'` : `- Do NOT add "${narratorName}" as an observer.`}
+
+OUTPUT FORMAT (STRICT JSON):
+{
+  "prompts": [
+    { "sceneId": "${scenes[0]?.sceneId || ''}", "prompt": "..." },
+    { "sceneId": "${scenes[1]?.sceneId || ''}", "prompt": "..." }${scenes.length > 2 ? `,\n    { "sceneId": "...", "prompt": "..." }` : ''}
+  ]
+}
+The output MUST be valid JSON. The "prompts" array MUST have exactly ${scenes.length} items, one per scene in the same order.`;
+
+  const promptContentParts = [{
+    role: "user",
+    parts: [{ text: promptContent }]
+  }];
+
+  const schema = {
+    type: "object",
+    properties: {
+      prompts: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            sceneId: { type: "string" },
+            prompt: { type: "string" }
+          },
+          required: ["sceneId", "prompt"]
+        }
+      }
+    },
+    required: ["prompts"]
+  };
+
+  let text = "";
+  try {
+    const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: promptContentParts,
+      config: {
+        systemInstruction: finalSystemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: schema
+      }
+    }));
+    text = response.text || "";
+  } catch (e: any) {
+    throw new Error(`Batch prompt generation failed: ` + e.message);
+  }
+
+  if (!text) throw new Error("No response from batch prompt generation");
+
+  text = cleanJsonString(text);
+  const data = JSON.parse(text) as { prompts: { sceneId: string; prompt: string }[] };
+
+  // Build result map { sceneId: [prompts] }
+  const result: Record<string, string[]> = {};
+  for (const item of data.prompts) {
+    if (!result[item.sceneId]) result[item.sceneId] = [];
+    const enhanced = applyNarratorSuffix(item.prompt, narratorName, narratorSuffix);
+    const stripped = stripLocationDescriptions(enhanced);
+    result[item.sceneId].push(stripped + "\\n" + styleSuffix);
+  }
+
+  return result;
+};
+
+/**
+ * Step 1: AI split narrative into scenes + assign sceneType + sceneMode in one call.
+ * Full trust: AI returns word-for-word narrative from original, no reconstruction.
+ */
+export const analyzeNarrativeSplitScenes = async (
+  context: string,
+  characterList: string,
+  language: 'id' | 'en',
+  manualApiKey?: string
+): Promise<{ narrativeText: string; splitText: string[]; sceneType: string; sceneMode: string }[]> => {
+  const rawText = (context || '').trim();
+  if (!rawText) return [];
+
+  const ai = getClient(manualApiKey);
+
+  const promptContent = `You are a professional storyboard editor splitting a narrative into scenes. For EACH scene, split by sentence boundaries and assign the MOST appropriate scene type and scene mode.
+
+FULL NARRATIVE:
+${rawText}
+
+CHARACTERS: ${characterList}
+
+RULES (in priority order — earlier rules override later ones):
+
+#1 SENTENCE INTEGRITY (ABSOLUTE — NEVER BREAK THIS):
+- The SENTENCE is the atomic unit. NEVER split a single sentence across two scenes.
+- Every sentence from the FULL NARRATIVE must appear ENTIRELY in ONE scene, unchanged.
+- Exception: ONLY split a sentence if it is >15 words. Then split at a COMMA or natural pause.
+- VERIFICATION: After writing all scenes, read each narrativeText. If any narrativeText contains a sentence fragment (incomplete sentence) that was complete in the full narrative, you have FAILED. Rewrite.
+
+#2 SCENE SIZE (sentence count is PRIMARY — counts work for ALL languages):
+- Target 2-3 SENTENCES per scene. This is your main goal.
+- ABSOLUTE MAX 4 sentences per scene. If a group of 4+ adjacent sentences would exceed 4, SPLIT into two scenes of 2-3 sentences each.
+- Word count is SECONDARY: typically 3-15 words per scene in English, but let sentence count be your guide.
+- MINIMUM: a scene can have 1 sentence only if that sentence is 3+ words. Otherwise group with adjacent.
+- IMPORTANT: 5 short sentences like "A. B. C. D. E." must be split into 2 scenes (e.g. "A. B." and "C. D. E."). Do NOT keep 5 sentences in one scene.
+
+#3 GROUPING:
+- Group adjacent sentences that share a unified visual concept.
+- Scene type is assigned AFTER splitting — do NOT manipulate scene boundaries just to get a different scene type.
+
+#4 splitText (subtitle chunks):
+- Divide narrativeText into subtitle-sized chunks.
+- Each chunk MUST respect sentence boundaries — never split a sentence across chunks.
+
+#5 PRESERVE EXACT ORIGINAL WORDING:
+- Every letter, period, comma, space must match the original.
+- Never paraphrase, rephrase, or summarize.
+- VERIFICATION: Concatenate all narrativeText fields. The result must equal the FULL NARRATIVE exactly. If words are missing or added, you have FAILED.
+
+SCENE TYPES — Assign the BEST type for each scene. Each type has a NARRATIVE INTENT — use what the scene IS DOING, not just what it LOOKS like. Distribute them — never use the same type twice in a row:
+- host-direct: "Direct address to viewer" — character faces camera, engages directly. Best for hooks, CTA, rhetorical questions, conclusions.
+- contrast: "Compare two states" — split-frame showing side-by-side or before/after of two contrasting conditions. Best for irony, paradox, comparison.
+- metaphor-scene: "Surreal symbolism" — abstract concept turned into tangible visual. Character INSIDE the metaphor world. Best for deep analogies and emotional concepts.
+- typography-hero: "Text IS the visual" — large bold word, phrase, or number dominates frame. Best for key terms, definitions, punchy one-liners.
+- multi-panel: "Comic strip" — 2 or 3 panels in one image showing sequence, progression, or parallel events. Best for steps, chronology, montage.
+
+SCENE MODES per sceneType (pick the BEST, then implement it visually):
+host-direct → direct
+contrast → side-by-side | before-after
+typography-hero → single-word | definition | big-number
+metaphor-scene → object | living
+multi-panel → panel-2 | panel-3
+
+OUTPUT FORMAT (strict JSON):
+{
+  "scenes": [
+    {
+      "narrativeText": "Open your fridge. Go on. Take a look. A carton of milk. Some cheese.",
+      "splitText": ["Open your fridge.", "Go on.", "Take a look.", "A carton of milk.", "Some cheese."],
+      "sceneType": "host-direct",
+      "sceneMode": "intro"
+    }
+  ]
+}
+
+No extra fields. Only the JSON. The "scenes" array MUST have all scenes covering the FULL narrative.`;
+
+  const schema = {
+    type: "object",
+    properties: {
+      scenes: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            narrativeText: { type: "string" },
+            splitText: {
+              type: "array",
+              items: { type: "string" }
+            },
+            sceneType: { type: "string" },
+            sceneMode: { type: "string" }
+          },
+          required: ["narrativeText", "splitText", "sceneType", "sceneMode"]
+        }
+      }
+    },
+    required: ["scenes"]
+  };
+
+  const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
+    model: 'gemini-3.1-flash-lite',
+    contents: [{ role: 'user', parts: [{ text: promptContent }] }],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  }));
+
+  const text = (response.text || "").trim();
+  if (!text) throw new Error("Empty response from scene splitting");
+
+  const cleaned = cleanJsonString(text);
+  const data = JSON.parse(cleaned) as { scenes: { narrativeText: string; splitText: string[]; sceneType: string; sceneMode: string }[] };
+
+  // Post-process: auto-split oversized scenes, merge singletons
+  return postProcessScenes(data.scenes);
+};
+
+/**
+ * Post-process: split any scene that exceeds the sentence/word limit.
+ * Each chunk in splitText should be 1 sentence → split when chunks > 4.
+ * Also merge singletons (< 5 words total) with adjacent scene.
+ * Uses splitText as sentence boundaries for reliable splitting.
+ */
+function postProcessScenes(
+  scenes: { narrativeText: string; splitText: string[]; sceneType: string; sceneMode: string }[]
+): { narrativeText: string; splitText: string[]; sceneType: string; sceneMode: string }[] {
+  const result: typeof scenes = [];
+
+  // Phase 1: Split oversized scenes (too many sentences OR too many words)
+  for (let i = 0; i < scenes.length; i++) {
+    const scene = scenes[i];
+    const chunkCount = scene.splitText.length;
+    const wordCount = scene.narrativeText.split(/\s+/).length;
+
+    if (chunkCount >= 5 || (wordCount > 20 && chunkCount >= 4)) {
+      // Split into 2 scenes at the midpoint
+      const mid = Math.ceil(chunkCount / 2);
+      const firstChunks = scene.splitText.slice(0, mid);
+      const secondChunks = scene.splitText.slice(mid);
+
+      // First half: keep original type, but adjust multi-panel mode based on chunk count
+      let firstMode = scene.sceneMode;
+      if (scene.sceneType === 'multi-panel') {
+        firstMode = getMultiPanelMode(firstChunks.length);
+      }
+      result.push({
+        narrativeText: firstChunks.join(' '),
+        splitText: firstChunks,
+        sceneType: scene.sceneType,
+        sceneMode: firstMode,
+      });
+
+      // Second half: pick a DIFFERENT type + DEFAULT mode for that type
+      const secondHalfText = secondChunks.join(' ');
+      const secondType = getSplitSceneType(scene.sceneType, secondHalfText);
+      result.push({
+        narrativeText: secondHalfText,
+        splitText: secondChunks,
+        sceneType: secondType,
+        sceneMode: getDefaultSceneMode(secondType),
+      });
+    } else {
+      result.push(scene);
+    }
+  }
+
+  // Phase 2: Merge singleton scenes (< 5 words total) with adjacent
+  for (let i = 0; i < result.length; i++) {
+    const wordCount = result[i].narrativeText.split(/\s+/).length;
+    if (wordCount < 5 && result.length > 1) {
+      if (i > 0) {
+        const prev = result[i - 1];
+        prev.narrativeText = prev.narrativeText + ' ' + result[i].narrativeText;
+        prev.splitText.push(...result[i].splitText);
+        result.splice(i, 1);
+        i--;
+      } else if (i < result.length - 1) {
+        const next = result[i + 1];
+        next.narrativeText = result[i].narrativeText + ' ' + next.narrativeText;
+        next.splitText = [...result[i].splitText, ...next.splitText];
+        result.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  // Phase 3: Validate & fix invalid sceneType+sceneMode combinations
+  for (const scene of result) {
+    scene.sceneMode = validateSceneMode(scene.sceneType, scene.sceneMode);
+  }
+
+  // Phase 3b: Adjust multi-panel mode to match actual chunk count
+  for (const scene of result) {
+    if (scene.sceneType === 'multi-panel') {
+      scene.sceneMode = getMultiPanelMode(scene.splitText.length);
+    }
+  }
+
+  // Phase 4: Break consecutive duplicate sceneTypes by swapping the second one
+  // Uses content-aware selection based on narrative text, not arbitrary rotation
+  for (let i = 1; i < result.length; i++) {
+    if (result[i].sceneType === result[i - 1].sceneType) {
+      const alternate = getContentAwareSceneType(result[i].sceneType, result[i].narrativeText, i, result);
+      result[i].sceneType = alternate;
+      result[i].sceneMode = getDefaultSceneMode(alternate);
+    }
+  }
+
+  return result;
+}
+
+/** Default scene mode for each scene type — used when creating new scenes */
+const DEFAULT_SCENE_MODES: Record<string, string> = {
+  'host-direct': 'direct',
+  'contrast': 'side-by-side',
+  'typography-hero': 'single-word',
+  'metaphor-scene': 'object',
+  'multi-panel': 'panel-2',
+};
+
+const SCENE_TYPE_ORDER = [
+  'host-direct', 'contrast', 'metaphor-scene', 'typography-hero', 'multi-panel'
+];
+
+function getDefaultSceneMode(type: string): string {
+  return DEFAULT_SCENE_MODES[type] || 'direct';
+}
+
+/** Adjust multi-panel mode based on actual chunk count */
+function getMultiPanelMode(chunkCount: number): string {
+  if (chunkCount >= 3) return 'panel-3';
+  return 'panel-2';
+}
+
+/**
+ * Pick the best scene type for the second half of a split.
+ * Uses content hints + prefers relevant types over arbitrary cycling.
+ */
+function getSplitSceneType(originalType: string, secondHalfText: string): string {
+  const text = secondHalfText.toLowerCase();
+
+  // Content-based hints for Indonesian & English
+  if (text.includes('tapi') || text.includes('tetapi') || text.includes('sedangkan') ||
+      text.includes('sementara') || text.includes('different') || text.includes('contrast') ||
+      text.includes('padahal') || text.includes('sebaliknya') || text.includes('bukan')) {
+    return 'contrast';
+  }
+  if (text.includes('bayangkan') || text.includes('imagine') || text.includes('seperti') ||
+      text.includes('andaikan') || text.includes('seolah') || text.includes('andai')) {
+    return 'metaphor-scene';
+  }
+  if (text.includes('?') && (text.includes('siapa') || text.includes('apa') || text.includes('dimana') ||
+      text.includes('how') || text.includes('why') || text.includes('what') ||
+      text.includes('tau nggak') || text.includes('tahu nggak') || text.includes('nggak'))) {
+    return 'host-direct';
+  }
+  if (text.includes('?') || text.includes('tau nggak') || text.includes('tahu nggak')) {
+    return 'host-direct';
+  }
+
+  // Default: prefer concept-visual (icon-based) for descriptive content,
+  // host-direct for question-like content, contrast for comparisons
+  // Avoid cycling — use content-aware defaults
+  if (originalType === 'multi-panel' || originalType === 'host-direct') {
+    return 'concept-visual';
+  }
+  if (originalType === 'contrast') {
+    return 'concept-visual';
+  }
+  if (originalType === 'concept-visual') {
+    return 'host-direct';
+  }
+  return 'concept-visual';
+}
+
+/**
+ * Content-aware scene type selection for consecutive duplicate fix.
+ * Analyzes narrative text to pick a semantically appropriate alternative.
+ * Prioritizes types that match the content over arbitrary rotation.
+ */
+function getContentAwareSceneType(
+  currentType: string,
+  narrativeText: string,
+  index: number,
+  allScenes: { sceneType: string }[]
+): string {
+  const text = narrativeText.toLowerCase();
+  const recentTypes = new Set<string>();
+  for (let j = Math.max(0, index - 3); j < index; j++) {
+    recentTypes.add(allScenes[j].sceneType);
+  }
+
+  // Priority 1: Content-based hints — emosi/perasaan → metaphor-scene
+  if (text.includes('capek') || text.includes('lelah') || text.includes('sedih') ||
+      text.includes('senang') || text.includes('takut') || text.includes('cemas') ||
+      text.includes('marah') || text.includes('kecewa') || text.includes('rasa') ||
+      text.includes('ngeras') || text.includes('perasaan') || text.includes('emosi') ||
+      text.includes('tired') || text.includes('sad') || text.includes('happy') ||
+      text.includes('angry') || text.includes('fear') || text.includes('anxious') ||
+      text.includes('emotion') || text.includes('feeling') || text.includes('stress')) {
+    if ('metaphor-scene' !== currentType && !recentTypes.has('metaphor-scene'))
+      return 'metaphor-scene';
+  }
+
+  // Perbandingan/ironi → contrast
+  if (text.includes('tapi') || text.includes('tetapi') || text.includes('sedangkan') ||
+      text.includes('sementara') || text.includes('padahal') || text.includes('sebaliknya') ||
+      text.includes('bukan') || text.includes('beda') || text.includes('berbeda') ||
+      text.includes('different') || text.includes('but') || text.includes('however') ||
+      text.includes('whereas') || text.includes('contrast') || text.includes('instead') ||
+      text.includes('actually') || text.includes('on the other hand')) {
+    if ('contrast' !== currentType && !recentTypes.has('contrast'))
+      return 'contrast';
+  }
+
+  // Priority 2: Keyword-based scoring
+  const candidateTypes = getCandidateTypes(currentType, recentTypes, text);
+  if (candidateTypes.length > 0) return candidateTypes[0];
+
+  // Priority 3: Fallback rotation (paling lambat diproses, paling jarang kepake)
+  const idx = SCENE_TYPE_ORDER.indexOf(currentType);
+  for (let offset = 1; offset < SCENE_TYPE_ORDER.length; offset++) {
+    const candidate = SCENE_TYPE_ORDER[(idx + offset) % SCENE_TYPE_ORDER.length];
+    if (!recentTypes.has(candidate)) return candidate;
+  }
+  return SCENE_TYPE_ORDER[(idx + 1) % SCENE_TYPE_ORDER.length];
+}
+
+/**
+ * Score all scene types by keyword match against narrative text.
+ * Returns types sorted by relevance, excluding current type and recent types.
+ */
+function getCandidateTypes(
+  currentType: string,
+  recentTypes: Set<string>,
+  text: string
+): string[] {
+  const keywords: Record<string, string[]> = {
+    'host-direct': ['lo', 'gue', 'kamu', 'anda', 'kita', 'nggak', 'ya', '?',
+                    'you', 'we', 'i', '?', 'let me', 'right?', 'guys',
+                    'tau nggak', 'tahu nggak'],
+    'contrast': ['tapi', 'tetapi', 'sedangkan', 'sementara', 'padahal', 'sebaliknya',
+                 'but', 'however', 'whereas', 'while', 'contrast', 'instead',
+                 'actually', 'bukan', 'beda', 'berbeda', 'dulu', 'sekarang'],
+    'metaphor-scene': ['seperti', 'bagai', 'laksana', 'ibarat', 'kiasan', 'analogi',
+                       'like', 'as if', 'metaphor', 'symbol', 'imagine', 'andaikan',
+                       'andai', 'seolah', 'pikiran', 'beban', 'ringan', 'berat'],
+    'typography-hero': ['adalah', 'ialah', 'yaitu', 'yakni', 'istilah', 'sebutan',
+                        'nama', 'kata kunci', 'definition', 'term', 'called',
+                        'pokoknya', 'intinya', 'singkatnya'],
+    'multi-panel': ['lalu', 'kemudian', 'setelah', 'mulai', 'langkah', 'tahap',
+                    'before', 'after', 'then', 'step', 'progres',
+                    'sebelum', 'sesudah', 'semula', 'kini']
+  };
+
+  const scored: { type: string; score: number }[] = [];
+
+  for (const type of SCENE_TYPE_ORDER) {
+    if (type === currentType || recentTypes.has(type)) continue;
+
+    const typeKeywords = keywords[type] || [];
+    let score = 0;
+    for (const kw of typeKeywords) {
+      if (text.includes(kw)) score++;
+    }
+    if (score > 0) scored.push({ type, score });
+  }
+
+  // Sort descending by score
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map(s => s.type);
+}
+
+/** Map of which modes are valid for each sceneType */
+const VALID_SCENE_MODES: Record<string, string[]> = {
+  'host-direct': ['direct'],
+  'contrast': ['side-by-side', 'before-after'],
+  'typography-hero': ['single-word', 'definition', 'big-number'],
+  'metaphor-scene': ['object', 'living'],
+  'multi-panel': ['panel-2', 'panel-3'],
+};
+
+/**
+ * If the sceneMode is NOT valid for the sceneType, replace with the default mode.
+ */
+function validateSceneMode(sceneType: string, sceneMode: string): string {
+  const validModes = VALID_SCENE_MODES[sceneType];
+  if (!validModes) return getDefaultSceneMode(sceneType);
+  if (validModes.includes(sceneMode)) return sceneMode;
+  return getDefaultSceneMode(sceneType);
+}
+
+/**
+ * Step 2: Generate scene types + T2I prompts for all (already-split) scenes.
+ * AI sees all scenes at once → distributes unique scene types and distinct prompts.
+ */
+export const batchGenerateTypesAndPrompts = async (
+  scenes: { sceneId: string; narrativeText: string; splitText: string[]; sceneType?: string; sceneMode?: string }[],
+  context: string,
+  characterList: string,
+  systemInstruction: string,
+  narratorName: string,
+  narratorSuffix: string,
+  styleSuffix: string,
+  easterEggCount: number,
+  easterEggTypes: string[],
+  negativePrompt: string,
+  language: 'id' | 'en',
+  manualApiKey?: string,
+  enforceObserver: boolean = true
+): Promise<Record<string, { sceneType: string; sceneMode: string; visualPrompt: string }>> => {
+  const ai = getClient(manualApiKey);
+
+  const sceneListStr = scenes.map((s, i) =>
+    `Scene ${i} (ID: ${s.sceneId}):\n  Narrative: "${s.narrativeText}"\n  SplitText: ${JSON.stringify(s.splitText)}\n  Word Count: ${s.narrativeText.split(/\s+/).filter(Boolean).length}\n  Scene Type: ${s.sceneType || 'TBD'}\n  Scene Mode: ${s.sceneMode || 'TBD'}`
+  ).join('\n\n');
+
+  // Build conditional character style rules (depends on preset + language)
+  const isStickFigure = styleSuffix.toLowerCase().includes('stick figure');
+  const characterListArr = characterList.split(',').map(c => c.trim()).filter(Boolean);
+  const otherChars = characterListArr.filter(c => c.toLowerCase() !== narratorName.toLowerCase());
+  const charListStr = characterListArr.join(', ');
+  const otherCharsStr = otherChars.length > 0 ? otherChars.join(', ') 
+    : (language === 'id' 
+        ? 'figuran kontekstual (deskripsikan LENGKAP: umur, jenis kelamin, outfit, gaya rambut — contoh: "seorang wanita 30 tahun berambut pendek dengan blazer navy", "pria paruh baya berkemeja batik, rambut disisir rapi", "anak laki-laki 10 tahun berseragam SD, rambut cepak")'
+        : 'contextual supporting character (describe IN FULL: age, gender, outfit, hairstyle — example: "a 30-year-old woman with short hair in a navy blazer", "a middle-aged man in batik shirt with neatly combed hair", "a 10-year-old boy in school uniform with a buzz cut")');
+  const charExample = otherChars.length > 0 ? otherChars[0] : (language === 'id' ? 'seorang teman' : 'a friend');
+  
+  const characterRules = language === 'id'
+    ? isStickFigure
+      ? `3. GAMBARKAN DENGAN DETAIL: Lukis adegan dengan kata-kata. Jangan deskripsi generik seperti "seseorang melihat makanan", tapi "seorang stick figure dengan ekspresi jijik berlebihan, mundur dari daging busuk yang menjijikkan". Gunakan detail sensorik — tekstur, reaksi, ekspresi.
+4. GAYA KARAKTER: Gunakan "Stick figure" atau "Karakter stick figure" sebagai pengganti "seseorang". Jangan deskripsikan anatomi realistis atau wajah detail.
+5. DISTRIBUSI KARAKTER: ${narratorName} HANYA untuk host-direct. Untuk contrast, metaphor-scene, multi-panel → pakai karakter lain (${otherCharsStr}) atau objek simbolik tanpa karakter. typography-hero → TANPA karakter apapun. Ini aturan paling keras.`
+      : `3. GAMBARKAN DENGAN DETAIL: Gunakan NAMA KARAKTER SPESIFIK dari daftar referensi. Karakter tersedia: ${charListStr}. ${narratorName} = narrator/host. Lainnya = figuran pendukung.
+4. DISTRIBUSI KARAKTER (HARD RULE): 
+   - host-direct → WAJIB ${narratorName} (host bicara ke kamera).
+   - contrast → ${narratorName} + ${charExample}, atau dua figuran berbeda. JANGAN ${narratorName} sendirian di kedua sisi.
+   - metaphor-scene → FIGURAN (${otherCharsStr}) atau objek simbolik TANPA karakter. JANGAN ${narratorName}.
+   - typography-hero → TANPA KARAKTER. Hanya teks/angka sebagai hero visual.
+   - multi-panel → Campur bebas: beberapa panel boleh ${narratorName}, sisanya figuran atau object-only.
+5. ${narratorName} MAKSIMAL muncul di 50% scene. Sisanya HARUS karakter lain atau tanpa karakter.`
+    : isStickFigure
+      ? `3. BE SPECIFIC AND VIVID: Paint the scene with words. Instead of "a person looks at food", describe "a stick figure person with an exaggerated disgusted expression, recoiling from a grotesque dripping slab of ancient meat". Use sensory details — textures, reactions, expressions.
+4. CHARACTER STYLE: Use "A stick figure person" or "A crude stick figure character" instead of "A person" when the scene involves characters. Never describe realistic human anatomy or detailed faces.
+5. CHARACTER DISTRIBUTION: ${narratorName} ONLY for host-direct. For contrast, metaphor-scene, multi-panel → use other characters (${otherCharsStr}) or symbolic objects without characters. typography-hero → NO characters. This is the hardest rule.`
+      : `3. BE SPECIFIC AND VIVID: Paint the scene with words. Use specific CHARACTER NAMES from the reference list. Available characters: ${charListStr}. ${narratorName} = narrator/host. Others = supporting cast.
+4. CHARACTER DISTRIBUTION (HARD RULE):
+   - host-direct → MUST use ${narratorName} (host speaks to camera).
+   - contrast → ${narratorName} + ${charExample}, or two different supporting characters. Do NOT use ${narratorName} alone on both sides.
+   - metaphor-scene → SUPPORTING character (${otherCharsStr}) or symbolic object WITHOUT any character. Do NOT use ${narratorName}.
+   - typography-hero → NO CHARACTER. Only text/number as visual hero.
+   - multi-panel → Free mix: some panels may use ${narratorName}, others supporting characters or object-only.
+5. ${narratorName} appears in MAX 50% of scenes. The rest MUST use other characters or no character at all.`;
+
+  // Bilingual scene type decision guide
+  const sceneTypeGuide = language === 'id' ? `PANDUAN SCENE TYPE — Pilih berdasarkan FUNGSI NARASI adegan ini:
+
+═══════════════════════════════════════════════════════
+🔴 ATURAN UTAMA — HARAM MELANGGAR:
+1. DUA ADEGAN BERTURUT-TURUT TIDAK BOLEH SAMA SCENE TYPE-nya.
+   Jika scene N adalah "host-direct", scene N+1 HARUS beda tipe.
+2. GUNAKAN SEMUA 5 SCENE TYPES dalam satu storyboard.
+   Variasi visual adalah kunci retensi penonton.
+3. Setiap scene harus punya IDENTITAS VISUAL UNIK.
+   Jangan ulangi komposisi yang sama.
+═══════════════════════════════════════════════════════
+
+TIPS VARIASI:
+- "capek banget" → metaphor-scene (visualisasi kelelahan)
+- "Dan tau nggak?" → host-direct (retoris pendek, langsung ke penonton)
+- "dulu vs sekarang" → contrast (split-frame perbandingan)
+- "istilah penting" → typography-hero (teks/angka sebagai hero)
+- "3 langkah" → multi-panel (urutan dalam panel komik)
+
+host-direct:
+  KAPAN → Host bicara LANGSUNG ke kamera: pembuka, CTA penutup, bridging topik, pertanyaan retoris, interaksi langsung dengan penonton
+  JANGAN → Adegan menjelaskan konsep tanpa interaksi host; voice-over naratif tanpa host di layar
+  KARAKTER → WAJIB ${narratorName} (host). TIDAK BOLEH karakter lain.
+  VIBE → Tatap kamera, gestur tangan ekspresif dan dinamis, seolah bicara ke penonton dengan energi. BUKAN pasif atau statis.
+  ALTERNATIF → contrast, metaphor-scene, typography-hero
+
+contrast:
+  KAPAN → Membandingkan DUA SISI: dulu vs sekarang, baik vs buruk, mitos vs fakta, ironi, paradoks, ekspektasi vs realita
+  JANGAN → Urutan langkah/sequence (pakai multi-panel); metafora abstrak (metaphor-scene)
+  KARAKTER → DUA karakter BERBEDA — ${narratorName} di satu sisi, figuran (atau objek) di sisi lain. JANGAN ${narratorName} di kedua sisi.
+  VIBE → Dua keadaan berdampingan. Split-frame atau transisi. Dramatisasi perbedaan. Hitam-putih vs warna.
+  ALTERNATIF → host-direct, metaphor-scene, multi-panel
+
+metaphor-scene:
+  KAPAN → Analogi MENDALAM, konsep abstrak DIVISUALISASIKAN secara surealis/kiasan: "beban pikiran seperti gunung", "kebohongan seperti jaring laba-laba"
+  JANGAN → Penjelasan literal; adegan realitas sehari-hari tanpa simbolisme; teks sebagai hero (typography-hero)
+  KARAKTER → FIGURAN atau OBJEK simbolik. JANGAN ${narratorName}. Objek tanpa karakter lebih bagus (bola rantai, jam pasir retak, sangkar kosong).
+  VIBE → Karakter di DALAM dunia metafora. Surealis, simbolik, imajinatif, seperti Pixar.
+  ALTERNATIF → host-direct, contrast, multi-panel
+
+typography-hero:
+  KAPAN → Kata kunci, definisi, kutipan, angka penting sebagai HERO visual utama — bikin penonton INGAT
+  JANGAN → Adegan yang butuh aksi atau narasi bergerak; konten yang lebih efektif jika dijelaskan secara visual
+  KARAKTER → TANPA KARAKTER APAPUN. Hanya teks/angka sebagai hero visual. Ini HARD RULE — tidak boleh ada karakter.
+  VIBE → Teks/angka BESAR mendominasi frame. Bold, minimalis, berani. Satu kata/frase/angka sebagai pusat perhatian.
+  ALTERNATIF → host-direct, contrast, multi-panel
+
+multi-panel:
+  KAPAN → BEBERAPA PANEL (2-3) dalam SATU frame: urutan langkah, kronologi, adegan paralel, sequence events
+  JANGAN → Satu momen saja yang cukup dengan satu scene type; terlalu banyak teks per panel
+  KARAKTER → Campur bebas antar panel. Jangan semua panel karakter sama. Variasikan ${narratorName} + figuran + objek.
+  VIBE → Gaya komik strip. Beberapa kejadian simultan dalam satu frame. Grid, komparasi.
+  ALTERNATIF → contrast, metaphor-scene, host-direct
+` : `SCENE TYPE GUIDE — Pick based on NARRATIVE FUNCTION:
+
+═══════════════════════════════════════════════════════
+🔴 HARD RULES — MUST FOLLOW:
+1. NO TWO CONSECUTIVE SCENES may have the same sceneType.
+   If scene N is "host-direct", scene N+1 MUST be different.
+2. USE ALL 5 SCENE TYPES across the storyboard.
+   Visual variety is key to viewer retention.
+3. Each scene must have a VISUALLY UNIQUE IDENTITY.
+   Don't repeat the same composition.
+═══════════════════════════════════════════════════════
+
+host-direct:
+  WHEN → Host speaks DIRECTLY to camera: opening hook, closing CTA, topic transition, rhetorical question, direct viewer engagement
+  NOT when → Scene explaining a concept without host interaction; voice-over narration without host on screen
+  CHARACTER → MUST use ${narratorName} (host). NO other characters allowed.
+  VIBE → Eye contact with camera, natural gestures. Warm, personal, engaging.
+  ALTERNATIVE → contrast, metaphor-scene, typography-hero
+
+contrast:
+  WHEN → Comparing TWO SIDES: past vs present, good vs bad, myth vs fact, irony, paradox, expectation vs reality
+  NOT when → Steps/sequence (use multi-panel); abstract metaphor (metaphor-scene)
+  CHARACTER → TWO DIFFERENT characters — ${narratorName} on one side, supporting character (or object) on the other. Do NOT use ${narratorName} on both sides.
+  VIBE → Two states side by side. Split-frame or transition. Dramatization of difference. B&W vs color.
+  ALTERNATIVE → host-direct, metaphor-scene, multi-panel
+
+metaphor-scene:
+  WHEN → Deep ANALOGY, abstract concept VISUALIZED surrealistically/figuratively: "mental burden as a mountain", "lies as a spider web"
+  NOT when → Literal explanation; everyday reality without symbolism; text as hero (typography-hero)
+  CHARACTER → SUPPORTING character or symbolic OBJECT. Do NOT use ${narratorName}. Object-only is great (chain ball, cracked hourglass, empty cage).
+  VIBE → Character INSIDE the metaphor world. Surreal, symbolic, imaginative, Pixar-style.
+  ALTERNATIVE → host-direct, contrast, multi-panel
+
+typography-hero:
+  WHEN → Key word, definition, quote, important number as visual HERO — makes viewers REMEMBER
+  NOT when → Scenes needing action or narrative movement; content better explained visually
+  CHARACTER → NO CHARACTER AT ALL. Only text/number as visual hero. This is a HARD RULE.
+  VIBE → BIG text/number dominates frame. Bold, minimal, striking. One word/phrase/number as focal point.
+  ALTERNATIVE → host-direct, contrast, multi-panel
+
+multi-panel:
+  WHEN → Multiple PANELS (2-3) in ONE frame: steps, chronology, parallel scenes, sequence events
+  NOT when → Single moment that one scene type can handle; too much text per panel
+  CHARACTER → Mix freely across panels. Don't use the same character in all panels. Vary ${narratorName} + supporting + objects.
+  VIBE → Comic strip style. Multiple simultaneous events in one frame. Grid, comparison.
+  ALTERNATIVE → contrast, metaphor-scene, host-direct
+`;
+  // Bilingual T2I composition template per scene type
+  const sceneTypeComposition = buildSceneTypeComposition(language);
+
+  const promptContent = `Generate ONLY the T2I visual prompts for ALL ${scenes.length} scenes below.
+
+FULL STORY CONTEXT:
+${context}
+
+CHARACTERS: ${characterList}
+
+HERE ARE THE SCENES (already split). Each scene already has a sceneType and sceneMode assigned. You ONLY need to generate the visualPrompt that matches the assigned sceneType and sceneMode.
+${sceneListStr}
+
+${sceneTypeGuide}
+
+${sceneTypeComposition}
+
+CREATIVITY DIRECTIVES — Let the chosen sceneType drive every aspect of the composition. Do NOT specify any camera angles, shot sizes, or cinematographic terminology (no close-up, wide shot, Dutch angle, bird's eye, worm's eye, over-the-shoulder, rule of thirds, leading lines, low angle, high angle, or any camera movement terms).
+
+SCENE MODES (pick the BEST mode per sceneType, then implement it into the visual prompt composition). The assigned sceneMode is provided per scene — implement it visually:
+host-direct → direct
+  - direct: Host or mascot facing camera, direct conversation with audience, engaging gesturing
+contrast → side-by-side | before-after
+  - side-by-side: Two contrasting states split in one frame
+  - before-after: Temporal transition between two states
+typography-hero → single-word | definition | big-number
+  - single-word: ONE big word, center frame
+  - definition: Word + brief explanation
+  - big-number: One massive number with label
+metaphor-scene → object | living
+  - object: Inanimate object with symbolic meaning
+  - living: Human body / animal as metaphor
+multi-panel → panel-2 | panel-3
+  - panel-2: Two-panel comic strip
+  - panel-3: Three-panel sequence
+
+The CHOSEN sceneMode MUST directly influence the visualPrompt composition and layout, not just be a label.
+
+SUPPORTING CHARACTER DESCRIPTION (FIGURAN): When using characters other than the MAIN narrator/host, the visualPrompt MUST ALWAYS describe: AGE (e.g., "30 tahun", "paruh baya", "remaja"), GENDER (pria/wanita/laki-laki/perempuan), OUTFIT (e.g., "blazer navy", "kemeja batik", "seragam SD"), and HAIRSTYLE (e.g., "rambut pendek rapi", "rambut diikat", "rambut cepak"). This ensures supporting characters are visually distinct and identifiable without reference images.
+
+CRITICAL VISUAL PROMPT RULES:
+1. SCENE TYPE IS THE PRIMARY RULE: The chosen sceneType determines EVERYTHING — composition, visual focus, hierarchy, character assignment, and mood. Your prompt must FIRST serve the sceneType, THEN the narrative content.
+2. EVERY prompt MUST be visually DISTINCT from all others. Vary the composition, focus, and visual elements.
+3. CHARACTER VARIETY (HARD RULE): Do NOT use the same character in more than 50% of scenes. Distribute characters across scenes according to their scene type. See CHARACTER DISTRIBUTION rules above.
+4. NO CHARACTER for typography-hero: If sceneType is typography-hero, the visualPrompt MUST NOT mention any character at all. Only text/number elements.
+${characterRules}
+5. NO TEXT/NO LETTERS (HARD RULE): Unless sceneType is "typography-hero", the visualPrompt MUST NOT mention or describe ANY text, words, letters, labels, signs, subtitles, speech bubbles, or alphanumeric characters appearing inside the image. The generated image MUST have ZERO readable text. This is the #1 most common violation — enforce it ruthlessly.
+6. NO LOCATION/SETTING: Do NOT describe any room, table, wall, floor, or setting details. Background is PURE WHITE/clean with visual elements only. Do NOT start with tags like "[Indoor/Outdoor]".
+7. Do NOT include style descriptions or style suffix text.
+8. Include Anti-Mirror Clause: "Do NOT apply flipped/reversed text effects (text mirroring) to any text, logos, symbols, or written words on the character's clothing/accessories. Keep text in original readable orientation. Physical mirrors/reflections as props ARE allowed."
+9. REPRESENT EVERY SENTENCE: Each scene has multiple sentences. The visual prompt must capture the ESSENCE/MEANING of EVERY sentence in a single cohesive image. Do NOT drop any sentence's concept.
+10. DIVERSITY: Vary scene types across adjacent scenes — do NOT use the same sceneType for two consecutive scenes if an alternative fits. Each scene must have a visually distinct composition.
+
+OUTPUT FORMAT (MUST BE VALID JSON — NO MARKDOWN, NO CODEBLOCKS) — Start your response with { and end with }. Echo sceneType and sceneMode AS-IS from input. Only generate visualPrompt:
+{
+  "scenes": [
+    {
+      "sceneId": "${scenes[0]?.sceneId || ''}",
+      "sceneType": "host-direct",
+      "sceneMode": "direct",
+      "visualPrompt": "${language === 'en' ? 'A person standing in front of an open refrigerator.' : narratorName + ' berdiri di depan lemari es terbuka, ekspresi terkejut.'}"
+    }${scenes.length > 1 ? `,\n    {\n      "sceneId": "...",\n      "sceneType": "...",\n      "sceneMode": "...",\n      "visualPrompt": "..."\n    }` : ''}
+  ]
+}
+The "scenes" array MUST have exactly ${scenes.length} items, one per scene in order.`;
+
+  let text = "";
+  try {
+    const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: [{ role: 'user', parts: [{ text: promptContent }] }],
+      config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ]
+      }
+    }));
+    // Try multiple ways to extract text from Gemini response
+    const r = response as any;
+    text = r.text || r.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Deep fallback: iterate all candidates
+    if (!text) {
+      for (const c of (r.candidates || [])) {
+        for (const p of (c?.content?.parts || [])) {
+          if (p?.text) { text += p.text; }
+        }
+      }
+    }
+    // Debug: if still no text, throw with raw response structure
+    if (!text) {
+      const debug = {
+        hasText: !!r.text,
+        candidatesCount: r.candidates?.length,
+        finishReason: r.candidates?.[0]?.finishReason,
+        safetyRatings: r.candidates?.[0]?.safetyRatings,
+        promptFeedback: r.promptFeedback,
+        promptLength: promptContent.length
+      };
+      throw new Error(`Empty response debug: ${JSON.stringify(debug)}`);
+    }
+  } catch (e: any) {
+    throw new Error(`Types & prompts generation failed: ${e.message}`);
+  }
+
+  const cleaned = cleanJsonString(text);
+  const data = safeJsonParse(cleaned) as { scenes: { sceneId: string; sceneType: string; sceneMode: string; visualPrompt: string }[] };
+
+  const result: Record<string, { sceneType: string; sceneMode: string; visualPrompt: string }> = {};
+  for (const item of data.scenes) {
+    const enhanced = applyNarratorSuffix(item.visualPrompt, narratorName, narratorSuffix);
+    result[item.sceneId] = {
+      sceneType: item.sceneType || 'host-direct',
+      sceneMode: item.sceneMode || '',
+      visualPrompt: enhanced + "\n" + styleSuffix
+    };
+  }
+
+  // Phase 5: Fix consecutive duplicate sceneTypes (post-processing diversity)
+  // Iterate in original scene order, fix any consecutive duplicates with content-aware selection
+  const resultEntries = Object.entries(result);
+  for (let i = 1; i < resultEntries.length; i++) {
+    const [, currData] = resultEntries[i];
+    const [, prevData] = resultEntries[i - 1];
+    if (currData.sceneType === prevData.sceneType) {
+      const sceneEntry = scenes.find(s => s.sceneId === resultEntries[i][0]);
+      const sceneText = sceneEntry?.narrativeText || '';
+      const alternate = getContentAwareSceneType(currData.sceneType, sceneText, i, resultEntries.map(([, d]) => d));
+      result[resultEntries[i][0]].sceneType = alternate;
+      result[resultEntries[i][0]].sceneMode = getDefaultSceneMode(alternate);
+    }
+  }
+
+  return result;
 };
